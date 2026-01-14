@@ -1,6 +1,17 @@
-from fastapi import Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 
+app = FastAPI()
+
+print("FASTAPI APP STARTING...")
+@app.get("/")
+def root():
+    return {
+        "status": "ok",
+        "message": "CRT Screener Backend is running",
+        "docs": "/docs"
+    }
 @app.get("/scan")
 def scan(tf: str = Query(..., description="daily, weekly, monthly")):
 
@@ -13,22 +24,14 @@ def scan(tf: str = Query(..., description="daily, weekly, monthly")):
     if tf not in tf_map:
         raise HTTPException(status_code=400, detail="Invalid timeframe")
 
-    try:
-        data = yf.download(
-            tickers="AAPL MSFT TSLA",
-            interval=tf_map[tf],
-            period="6mo",
-            group_by="ticker",
-            progress=False
-        )
+    data = yf.download(
+        tickers="AAPL MSFT TSLA",
+        interval=tf_map[tf],
+        period="6mo",
+        progress=False
+    )
 
-        return {
-            "status": "success",
-            "timeframe": tf,
-            "symbols": list(data.columns.levels[0])
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
+    return {
+        "status": "success",
+        "timeframe": tf
+    }
