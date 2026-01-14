@@ -3,6 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 
 app = FastAPI()
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # allow all (for testing)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 print("FASTAPI APP STARTING...")
 @app.get("/")
