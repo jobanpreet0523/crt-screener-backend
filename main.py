@@ -1,34 +1,36 @@
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-import yfinance as yf
+from fastapi import FastAPI
 
-from database import Base, engine, SessionLocal
-from models import User, Scan
-from auth import hash_pw, verify_pw, create_token, decode_token
-
-print("FASTAPI APP STARTING...")
-
-# Create DB tables
-Base.metadata.create_all(bind=engine)
-
-# Create FastAPI app FIRST
 app = FastAPI()
 
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Root health check
+# HEALTH CHECK
 @app.get("/")
 def root():
+    return {"status": "ok", "message": "CRT Screener Backend Running"}
+
+# REGISTER
+@app.post("/register")
+def register(user: dict):
     return {
-        "status": "ok",
-        "message": "CRT Screener Backend is running",
-        "docs": "/docs"
+        "msg": "User registered successfully",
+        "username": user.get("username")
     }
 
+# LOGIN
+@app.post("/login")
+def login(user: dict):
+    return {
+        "msg": "Login successful",
+        "username": user.get("username"),
+        "token": "dummy-token"
+    }
+
+# SCAN
+@app.get("/scan")
+def scan(tf: str = "daily"):
+    return {
+        "timeframe": tf,
+        "results": [
+            {"symbol": "AAPL", "signal": "BUY CRT"},
+            {"symbol": "MSFT", "signal": "SELL CRT"}
+        ]
+    }
