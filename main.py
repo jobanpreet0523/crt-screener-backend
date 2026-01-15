@@ -26,15 +26,15 @@ def root():
 def scan(tf: str = Query("daily")):
 
     interval_map = {
-        "daily": "1d",
-        "weekly": "1wk",
-        "monthly": "1mo"
+        "daily": ("1d", "6mo"),
+        "weekly": ("1wk", "2y"),
+        "monthly": ("1mo", "5y"),
     }
 
     if tf not in interval_map:
         raise HTTPException(status_code=400, detail="Invalid timeframe")
 
-    interval = interval_map[tf]
+    interval, period = interval_map[tf]
     results = []
 
     symbols = get_us_stocks()[:200]  # SAFE LIMIT
@@ -44,14 +44,16 @@ def scan(tf: str = Query("daily")):
             df = yf.download(
                 symbol,
                 interval=interval,
-                period="6mo",
-                progress=False
+                period=period,
+                progress=False,
+                auto_adjust=True
             )
 
-            if df.empty:
+            if df is None or df.empty or len(df) < 20:
                 continue
 
             crt_type = classify_crt(df)
+
             if crt_type:
                 results.append({
                     "symbol": symbol,
@@ -69,10 +71,11 @@ def scan(tf: str = Query("daily")):
 
 @app.get("/debug")
 def debug_one(symbol: str = "AAPL", tf: str = "daily"):
+
     interval_map = {
-        "daily": "1d",
-        "weekly": "1wk",
-        "monthly": "1mo"
+        "daily": ("1d", "5y"),
+        "weekly": ("1wk", "10y"),
+        "monthly": ("1mo", "20y"),
     }
 
     if tf not in interval_map:
@@ -81,12 +84,15 @@ def debug_one(symbol: str = "AAPL", tf: str = "daily"):
             "tf": tf
         }
 
+    interval, period = interval_map[tf]
+
     try:
         df = yf.download(
             symbol,
-            interval=interval_map[tf],
-            period="5y",
-            progress=False
+            interval=interval,
+            period=period,
+            progress=False,
+            auto_adjust=True
         )
 
         if df is None or df.empty:
