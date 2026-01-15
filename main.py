@@ -1,9 +1,6 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
-
-from phase3.universe import get_us_stocks
-from phase3.crt_logic import is_crt
 
 app = FastAPI()
 
@@ -15,41 +12,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/scan")
-def scan_crt(tf: str = "daily"):
+@app.get("/")
+def root():
+    return {
+        "status": "ok",
+        "message": "CRT Screener Backend is running"
+    }
 
-    interval_map = {
+@app.get("/scan")
+def scan(tf: str = Query(..., description="daily, weekly, monthly")):
+
+    tf_map = {
         "daily": "1d",
         "weekly": "1wk",
         "monthly": "1mo"
     }
 
-    interval = interval_map.get(tf, "1d")
+    if tf not in tf_map:
+        raise HTTPException(status_code=400, detail="Invalid timeframe")
 
-    symbols = get_us_stocks()
-
-    results = []
-
-    for symbol in symbols:
-        df = yf.download(
-            symbol,
-            interval=interval,
-            period="6mo",
-            progress=False
-        )
-
-        if df.empty:
-            continue
-
-        if is_crt(df):
-            results.append({
-                "symbol": symbol,
-                "timeframe": tf,
-                "status": "CRT"
-            })
+    yf.download(
+        tickers="AAPL MSFT TSLA NVDA",
+        interval=tf_map[tf],
+        period="6mo",
+        progress=False
+    )
 
     return {
-        "total": len(results),
-        "results": results
+        "status": "success",
+        "timeframe": tf
     }
 
