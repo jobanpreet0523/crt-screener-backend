@@ -11,7 +11,7 @@ def is_crt(df):
         ranges.append(high - low)
 
     # Volatility contraction
-    return ranges[0] < ranges[1] < ranges[2] < ranges[3]
+   return ranges[0] < ranges[1] and ranges[1] < ranges[2]
 
 
 def is_option_a(df):
