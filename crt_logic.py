@@ -1,6 +1,5 @@
 def classify_crt(df):
-    if df is None or len(df) < 20:
-        return None
+    return "Bullish CRT (TEST)"
 
     df = df.dropna()
 
