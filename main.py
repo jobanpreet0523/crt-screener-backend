@@ -69,21 +69,42 @@ def scan(tf: str = Query("daily")):
 
 @app.get("/debug")
 def debug_one(symbol: str = "AAPL", tf: str = "daily"):
-
     interval_map = {
         "daily": "1d",
         "weekly": "1wk",
         "monthly": "1mo"
     }
 
-    df = yf.download(
-        symbol,
-        interval=interval_map[tf],
-        period="6mo",
-        progress=False
-    )
+    if tf not in interval_map:
+        return {
+            "error": "Invalid timeframe",
+            "tf": tf
+        }
 
-    return {
-        "symbol": symbol,
-        "crt": classify_crt(df)
-    }
+    try:
+        df = yf.download(
+            symbol,
+            interval=interval_map[tf],
+            period="6mo",
+            progress=False
+        )
+
+        if df is None or df.empty:
+            return {
+                "symbol": symbol,
+                "error": "No price data returned"
+            }
+
+        crt = classify_crt(df)
+
+        return {
+            "symbol": symbol,
+            "rows": len(df),
+            "crt": crt
+        }
+
+    except Exception as e:
+        return {
+            "symbol": symbol,
+            "exception": str(e)
+        }
