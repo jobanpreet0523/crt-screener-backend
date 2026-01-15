@@ -1,35 +1,69 @@
 def classify_crt(df):
     """
-    Returns:
-        OPTION_A_CONTINUATION
-        OPTION_B_REVERSAL
-        None
+    CRT Classification:
+    OPTION_A_CONTINUATION → contraction in trend direction
+    OPTION_B_REVERSAL     → contraction against trend
     """
 
-    if df is None or len(df) < 6:
-        return None
+    if df is None or len(df) < 10:
+        returns: None
 
     try:
-        # Last 5 candle ranges
+        # -----------------------------
+        # 1️⃣ Volatility contraction (last 5 candles)
+        # -----------------------------
         ranges = []
+        bodies = []
+
         for i in range(1, 6):
             high = df.iloc[-i]["High"]
             low = df.iloc[-i]["Low"]
-            ranges.append(high - low)
+            open_ = df.iloc[-i]["Open"]
+            close = df.iloc[-i]["Close"]
 
-        # Volatility contraction condition
-        if not (ranges[0] < ranges[1] < ranges[2] < ranges[3]):
+            ranges.append(high - low)
+            bodies.append(abs(close - open_))
+
+        # Contraction condition (flexible, realistic)
+        if not (
+            ranges[0] < ranges[1] and
+            ranges[1] <= ranges[2] and
+            ranges[2] <= ranges[3]
+        ):
             return None
 
-        # Direction logic
-        last_close = df.iloc[-1]["Close"]
-        prev_close = df.iloc[-2]["Close"]
+        if not (
+            bodies[0] < bodies[1] and
+            bodies[1] <= bodies[2]
+        ):
+            return None
 
-        if last_close > prev_close:
-            return "OPTION_A_CONTINUATION"
+        # -----------------------------
+        # 2️⃣ Trend before contraction (5–10 candles back)
+        # -----------------------------
+        prev_close = df.iloc[-6]["Close"]
+        prev_prev_close = df.iloc[-10]["Close"]
+
+        if prev_close > prev_prev_close:
+            trend = "UP"
+        elif prev_close < prev_prev_close:
+            trend = "DOWN"
         else:
-            return "OPTION_B_REVERSAL"
+            return None
+
+        # -----------------------------
+        # 3️⃣ CRT Type classification
+        # -----------------------------
+        last_close = df.iloc[-1]["Close"]
+        last_open = df.iloc[-1]["Open"]
+
+        if trend == "UP" and last_close > last_open:
+            return "OPTION_A_CONTINUATION"
+
+        if trend == "DOWN" and last_close < last_open:
+            return "OPTION_A_CONTINUATION"
+
+        return "OPTION_B_REVERSAL"
 
     except Exception:
         return None
-
