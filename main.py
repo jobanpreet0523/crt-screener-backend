@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 
 from universe import get_us_stocks
-from crt_logic import is_crt
+from crt_logic import classify_crt   # ✅ IMPORTANT
 
 app = FastAPI()
 
@@ -51,18 +51,18 @@ def scan(tf: str = Query("daily")):
             if df.empty:
                 continue
 
-            if is_crt(df):
+            crt_type = classify_crt(df)
+            if crt_type:
                 results.append({
                     "symbol": symbol,
                     "timeframe": tf,
-                    "status": "CRT"
+                    "type": crt_type
                 })
 
-        except:
+        except Exception as e:
             continue
 
     return {
         "total": len(results),
         "results": results
     }
-
