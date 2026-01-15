@@ -66,3 +66,22 @@ def scan(tf: str = Query("daily")):
         "total": len(results),
         "results": results
     }
+@app.get("/debug")
+def debug_one(symbol: str = "AAPL", tf: str = "daily"):
+    interval_map = {
+        "daily": "1d",
+        "weekly": "1wk",
+        "monthly": "1mo"
+    }
+
+    df = yf.download(
+        symbol,
+        interval=interval_map[tf],
+        period="6mo",
+        progress=False
+    )
+
+    return {
+        "symbol": symbol,
+        "crt": classify_crt(df)
+    }
