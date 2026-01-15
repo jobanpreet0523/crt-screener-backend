@@ -1,84 +1,34 @@
-import pandas as pd
-
-
-def validate_df(df):
-    if df is None:
-        return False
-
-    if not isinstance(df, pd.DataFrame):
-        return False
-
-    if df.shape[0] < 6:
-        return False
-
-    required_cols = {"Open", "High", "Low", "Close"}
-    if not required_cols.issubset(set(df.columns)):
-        return False
-
-    return True
-
-
-def is_option_a(df):
-    # OPTION A: Continuation CRT
-
-    if not validate_df(df):
-        return False
-
-    last = df.iloc[-1]
-    prev = df.iloc[-2]
-
-    ranges = []
-    for i in range(1, 5):
-        candle = df.iloc[-i]
-        ranges.append(float(candle["High"] - candle["Low"]))
-
-    # Volatility contraction
-    if not (ranges[0] < ranges[1] < ranges[2] < ranges[3]):
-        return False
-
-    # Bullish continuation
-    if float(last["Close"]) <= float(prev["Close"]):
-        return False
-
-    return True
-
-
-def is_option_b(df):
-    # OPTION B: Reversal CRT
-
-    if not validate_df(df):
-        return False
-
-    last = df.iloc[-1]
-    prev2 = df.iloc[-3]
-
-    ranges = []
-    for i in range(1, 4):
-        candle = df.iloc[-i]
-        ranges.append(float(candle["High"] - candle["Low"]))
-
-    if not (ranges[0] < ranges[1] < ranges[2]):
-        return False
-
-    # Bullish reversal intent
-    if float(last["Close"]) <= float(last["Open"]):
-        return False
-
-    if float(last["Close"]) <= float(prev2["Low"]):
-        return False
-
-    return True
-
-
 def classify_crt(df):
-    try:
-        if is_option_a(df):
-            return "OPTION_A_CONTINUATION"
-
-        if is_option_b(df):
-            return "OPTION_B_REVERSAL"
-
-    except Exception as e:
+    if df is None or len(df) < 20:
         return None
+
+    df = df.dropna()
+
+    # Last 3 candles
+    c1 = df.iloc[-3]
+    c2 = df.iloc[-2]
+    c3 = df.iloc[-1]
+
+    range1 = c1.High - c1.Low
+    range2 = c2.High - c2.Low
+    range3 = c3.High - c3.Low
+
+    # ---------- CONFIRMED CRT ----------
+    contraction = range3 < range2 < range1
+    breakout = c3.Close > c2.High or c3.Close < c2.Low
+
+    if contraction and breakout:
+        return "CRT_CONFIRMED"
+
+    # ---------- NEAR CRT ----------
+    near_contraction = range3 < range2 and range2 < range1 * 1.1
+
+    inside_bar = (
+        c3.High <= c2.High and
+        c3.Low >= c2.Low
+    )
+
+    if near_contraction or inside_bar:
+        return "NEAR_CRT"
 
     return None
