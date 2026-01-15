@@ -1,18 +1,58 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
+
+# IMPORT PHASE 3 LOGIC
+from phase3.universe import get_us_stocks
+from phase3.crt_logic import is_crt
+
+# -----------------------------
+# CREATE APP (ONLY ONCE)
+# -----------------------------
+app = FastAPI()
+
+# -----------------------------
+# CORS
+# -----------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+print("FASTAPI APP STARTING...")
+
+# -----------------------------
+# HEALTH CHECK
+# -----------------------------
+@app.get("/")
+def root():
+    return {
+        "status": "ok",
+        "message": "CRT Screener Backend is running",
+        "docs": "/docs"
+    }
+
+# -----------------------------
+# CRT SCANNER (PHASE 3)
+# -----------------------------
 @app.get("/scan")
-def scan_crt(tf: str = "daily"):
+def scan_crt(tf: str = Query("daily", description="daily, weekly, monthly")):
+
     interval_map = {
         "daily": "1d",
         "weekly": "1wk",
         "monthly": "1mo"
     }
 
-    interval = interval_map.get(tf, "1d")
+    if tf not in interval_map:
+        raise HTTPException(status_code=400, detail="Invalid timeframe")
 
-    symbols = get_us_stocks()[:200]  # start small (SAFE)
+    interval = interval_map[tf]
 
+    symbols = get_us_stocks()[:200]   # SAFE LIMIT
     results = []
 
     for symbol in symbols:
@@ -40,47 +80,4 @@ def scan_crt(tf: str = "daily"):
     return {
         "total": len(results),
         "results": results
-    }
-
-app = FastAPI()
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   # allow all (for testing)
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-print("FASTAPI APP STARTING...")
-@app.get("/")
-def root():
-    return {
-        "status": "ok",
-        "message": "CRT Screener Backend is running",
-        "docs": "/docs"
-    }
-@app.get("/scan")
-def scan(tf: str = Query(..., description="daily, weekly, monthly")):
-
-    tf_map = {
-        "daily": "1d",
-        "weekly": "1wk",
-        "monthly": "1mo"
-    }
-
-    if tf not in tf_map:
-        raise HTTPException(status_code=400, detail="Invalid timeframe")
-
-    data = yf.download(
-        tickers="AAPL MSFT TSLA",
-        interval=tf_map[tf],
-        period="6mo",
-        progress=False
-    )
-
-    return {
-        "status": "success",
-        "timeframe": tf
     }
