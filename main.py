@@ -1,6 +1,46 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
+@app.get("/scan")
+def scan_crt(tf: str = "daily"):
+    interval_map = {
+        "daily": "1d",
+        "weekly": "1wk",
+        "monthly": "1mo"
+    }
+
+    interval = interval_map.get(tf, "1d")
+
+    symbols = get_us_stocks()[:200]  # start small (SAFE)
+
+    results = []
+
+    for symbol in symbols:
+        try:
+            df = yf.download(
+                symbol,
+                period="6mo",
+                interval=interval,
+                progress=False
+            )
+
+            if df.empty:
+                continue
+
+            if is_crt(df):
+                results.append({
+                    "symbol": symbol,
+                    "timeframe": tf,
+                    "status": "CRT"
+                })
+
+        except:
+            continue
+
+    return {
+        "total": len(results),
+        "results": results
+    }
 
 app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
