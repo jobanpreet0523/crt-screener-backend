@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 
 from universe import get_us_stocks
-from crt_logic import classify_crt   # ✅ IMPORTANT
+from crt_logic import classify_crt
 
 app = FastAPI()
 
@@ -59,15 +59,17 @@ def scan(tf: str = Query("daily")):
                     "type": crt_type
                 })
 
-        except Exception as e:
+        except Exception:
             continue
 
     return {
         "total": len(results),
         "results": results
     }
+
 @app.get("/debug")
 def debug_one(symbol: str = "AAPL", tf: str = "daily"):
+
     interval_map = {
         "daily": "1d",
         "weekly": "1wk",
