@@ -37,7 +37,7 @@ def scan(tf: str = Query("daily")):
     interval = interval_map[tf]
     results = []
 
-    symbols = get_us_stocks()[:50]  # SAFE LIMIT
+    symbols = get_us_stocks()[:200]  # SAFE LIMIT
 
     for symbol in symbols:
         try:
@@ -85,7 +85,7 @@ def debug_one(symbol: str = "AAPL", tf: str = "daily"):
         df = yf.download(
             symbol,
             interval=interval_map[tf],
-            period="6mo",
+            period="5y",
             progress=False
         )
 
