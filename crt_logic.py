@@ -1,46 +1,45 @@
 # crt_logic.py
 
 def is_volatility_contracting(df, bars=4):
-    if len(df) < bars + 1:
+    if df is None or len(df) < bars + 1:
         return False
 
     ranges = []
     for i in range(bars):
-        high = df.iloc[-(i+1)]["High"]
-        low = df.iloc[-(i+1)]["Low"]
+        candle = df.iloc[-(i+1)]
+        high = candle["High"]
+        low = candle["Low"]
+
+        if high is None or low is None:
+            return False
+
         ranges.append(high - low)
 
-    # STRICT contraction: newest < previous < older
     return all(ranges[i] < ranges[i+1] for i in range(len(ranges) - 1))
 
 
 def is_option_a(df):
-    """
-    OPTION A: Continuation CRT
-    - Volatility contracting
-    - Close near highs
-    """
     if not is_volatility_contracting(df):
         return False
 
     last = df.iloc[-1]
-    return last["Close"] > (last["High"] + last["Low"]) / 2
+    mid = (last["High"] + last["Low"]) / 2
+    return last["Close"] > mid
 
 
 def is_option_b(df):
-    """
-    OPTION B: Reversal CRT
-    - Volatility contracting
-    - Close near lows
-    """
     if not is_volatility_contracting(df):
         return False
 
     last = df.iloc[-1]
-    return last["Close"] < (last["High"] + last["Low"]) / 2
+    mid = (last["High"] + last["Low"]) / 2
+    return last["Close"] < mid
 
 
 def classify_crt(df):
+    if df is None or df.empty:
+        return None
+
     if is_option_a(df):
         return "OPTION_A_CONTINUATION"
 
