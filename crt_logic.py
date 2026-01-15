@@ -1,10 +1,6 @@
-def classify_crt(df):
-    if is_option_a(df):
-        return "OPTION_A_CONTINUATION"
-    if is_option_b(df):
-        return "OPTION_B_REVERSAL"
-    return None
+# crt_logic.py
 
+def is_crt(df):
     if len(df) < 5:
         return False
 
@@ -16,3 +12,24 @@ def classify_crt(df):
 
     # Volatility contraction
     return ranges[0] < ranges[1] < ranges[2] < ranges[3]
+
+
+def is_option_a(df):
+    # Simple continuation logic (price above 20 MA)
+    ma20 = df["Close"].rolling(20).mean().iloc[-1]
+    return is_crt(df) and df["Close"].iloc[-1] > ma20
+
+
+def is_option_b(df):
+    # Simple reversal logic (price extended)
+    ma50 = df["Close"].rolling(50).mean().iloc[-1]
+    return is_crt(df) and df["Close"].iloc[-1] > ma50
+
+
+def classify_crt(df):
+    if is_option_a(df):
+        return "OPTION_A_CONTINUATION"
+    if is_option_b(df):
+        return "OPTION_B_REVERSAL"
+    return None
+
