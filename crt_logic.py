@@ -1,4 +1,10 @@
-def is_crt(df):
+def classify_crt(df):
+    if is_option_a(df):
+        return "OPTION_A_CONTINUATION"
+    if is_option_b(df):
+        return "OPTION_B_REVERSAL"
+    return None
+
     if len(df) < 5:
         return False
 
