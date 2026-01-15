@@ -14,17 +14,6 @@ def is_crt(df):
    return ranges[0] < ranges[1] and ranges[1] < ranges[2]
 
 
-def is_option_a(df):
-    # Simple continuation logic (price above 20 MA)
-    ma20 = df["Close"].rolling(20).mean().iloc[-1]
-    return is_crt(df) and df["Close"].iloc[-1] > ma20
-
-
-def is_option_b(df):
-    # Simple reversal logic (price extended)
-    ma50 = df["Close"].rolling(50).mean().iloc[-1]
-    return is_crt(df) and df["Close"].iloc[-1] > ma50
-
 
 def classify_crt(df):
     if is_option_a(df):
