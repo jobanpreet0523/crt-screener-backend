@@ -1,6 +1,10 @@
-def run_crt_scan(tf="daily"):
+def scan_symbol(symbol: str):
+    """
+    Dummy CRT scan logic (safe for deployment)
+    Replace later with real CRT logic
+    """
     return {
-        "timeframe": tf,
-        "message": "Scanner running",
-        "results": []
+        "symbol": symbol,
+        "crt": "not_detected",
+        "bias": "neutral"
     }
