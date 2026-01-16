@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from scanner import run_crt_scan
+from .scanner import run_crt_scan
 
 app = FastAPI()
 
