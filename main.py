@@ -1,32 +1,31 @@
-from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
-
-from scanner import scan_symbol
-from universe import get_us_stocks
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/")
-def health():
-    return {
-        "status": "OK",
-        "service": "CRT Screener Backend"
-    }
-
 @app.get("/scan")
-def scan(tf: str = Query("daily")):
+def scan(tf: str = "daily", demo: bool = False):
+    # 🔹 DEMO MODE (for testing frontend)
+    if demo:
+        results = [
+            {
+                "symbol": "EURUSD",
+                "crt": "Bullish",
+                "timeframe": tf
+            },
+            {
+                "symbol": "USDJPY",
+                "crt": "Bearish",
+                "timeframe": tf
+            }
+        ]
 
+        return {
+            "timeframe": tf,
+            "total": len(results),
+            "results": results
+        }
+
+    # 🔹 REAL SCAN MODE
     tf_map = {
         "daily": "1d",
-        "weekly": "1wk",
-        "monthly": "1mo"
+        "4h": "4h",
+        "1h": "1h"
     }
 
     interval = tf_map.get(tf)
