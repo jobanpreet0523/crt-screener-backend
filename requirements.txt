@@ -1,8 +1,3 @@
-fastapi
-uvicorn
-yfinance
-pandas
-numpy
-sqlalchemy
-passlib[bcrypt]
-pyjwt
+fastapi==0.110.0
+uvicorn==0.27.1
+pandas==2.2.0
