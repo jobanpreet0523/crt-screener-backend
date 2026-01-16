@@ -1,19 +1,35 @@
 def classify_crt(df):
+    """
+    Detects CRT pattern:
+    - Candle 1 & 2: consolidation (small bodies)
+    - Candle 3: expansion (large body)
+    """
+
     if df is None or len(df) < 3:
         return None
 
-    c1, c2, c3 = df.iloc[-3], df.iloc[-2], df.iloc[-1]
+    try:
+        c1 = df.iloc[-3]
+        c2 = df.iloc[-2]
+        c3 = df.iloc[-1]
 
-    body1 = abs(c1["Close"] - c1["Open"])
-    body2 = abs(c2["Close"] - c2["Open"])
-    body3 = abs(c3["Close"] - c3["Open"])
+        def body(c):
+            return abs(c["Close"] - c["Open"])
 
-    range1 = c1["High"] - c1["Low"]
-    range2 = c2["High"] - c2["Low"]
-    range3 = c3["High"] - c3["Low"]
+        def rng(c):
+            return c["High"] - c["Low"]
 
-    if body1 < range1 * 0.3 and body2 < range2 * 0.3:
-        if body3 > range3 * 0.6:
-            return "Bullish CRT" if c3["Close"] > c3["Open"] else "Bearish CRT"
+        # Avoid divide / bad data
+        if rng(c1) == 0 or rng(c2) == 0 or rng(c3) == 0:
+            return None
+
+        # Consolidation candles
+        if body(c1) < rng(c1) * 0.3 and body(c2) < rng(c2) * 0.3:
+            # Expansion candle
+            if body(c3) > rng(c3) * 0.6:
+                return "Bullish CRT" if c3["Close"] > c3["Open"] else "Bearish CRT"
+
+    except Exception:
+        return None
 
     return None
