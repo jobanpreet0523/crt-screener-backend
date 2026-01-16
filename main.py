@@ -3,8 +3,8 @@ from fastapi import FastAPI, Query
 app = FastAPI(title="CRT Screener Backend")
 
 @app.get("/")
-def health():
-    return {"status": "OK", "service": "CRT Backend"}
+def root():
+    return {"status": "CRT Backend Running"}
 
 @app.get("/scan")
 def scan(tf: str = Query(default="daily")):
