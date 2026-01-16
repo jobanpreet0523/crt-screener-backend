@@ -1,9 +1,9 @@
-# universe.py
-
-def get_us_stocks():
-    return [
-        "AAPL", "MSFT", "NVDA", "AMZN", "META",
-        "TSLA", "GOOGL", "AMD", "NFLX", "INTC",
-        "JPM", "BAC", "WMT", "DIS", "KO",
-        "PEP", "ORCL", "ADBE", "CRM", "COST"
-    ]
+FOREX_PAIRS = [
+    "EURUSD=X",
+    "GBPUSD=X",
+    "USDJPY=X",
+    "AUDUSD=X",
+    "USDCHF=X",
+    "USDCAD=X",
+    "NZDUSD=X"
+]
