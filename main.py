@@ -2,11 +2,9 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from scanner import scan_symbol
-from universe import get_us_stocks
 
-app = FastAPI(title="CRT Screener Backend")
+app = FastAPI()
 
-# CORS (allow frontend access)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,12 +12,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Timeframe map
 TF_MAP = {
     "daily": "1d",
-    "4h": "4h",
-    "1h": "1h"
+    "4h": "1h",
+    "1h": "1h",
+    "15m": "15m"
 }
+
+FOREX_PAIRS = [
+    "EURUSD=X",
+    "GBPUSD=X",
+    "USDJPY=X",
+    "AUDUSD=X",
+    "USDCHF=X",
+    "USDCAD=X",
+    "NZDUSD=X"
+]
 
 @app.get("/")
 def health():
@@ -31,18 +39,16 @@ def health():
 @app.get("/scan")
 def scan(tf: str = Query("daily")):
     interval = TF_MAP.get(tf)
-
     if not interval:
         return {"error": "Invalid timeframe"}
 
-    symbols = get_us_stocks()[:200]
     results = []
 
-    for symbol in symbols:
+    for symbol in FOREX_PAIRS:
         res = scan_symbol(symbol, interval)
         if res:
             results.append({
-                "symbol": symbol,
+                "symbol": symbol.replace("=X", ""),
                 "crt": res,
                 "timeframe": tf
             })
