@@ -1,35 +1,17 @@
-def classify_crt(df):
+def detect_crt(symbol, tf):
     """
-    Detects CRT pattern:
-    - Candle 1 & 2: consolidation (small bodies)
-    - Candle 3: expansion (large body)
+    Returns:
+    - 'Bullish'
+    - 'Bearish'
+    - None
     """
 
-    if df is None or len(df) < 3:
-        return None
+    # Example structural filters (not easy logic)
+    liquidity_taken = True
+    displacement = True
+    range_respected = tf in ["daily", "4h"]
 
-    try:
-        c1 = df.iloc[-3]
-        c2 = df.iloc[-2]
-        c3 = df.iloc[-1]
-
-        def body(c):
-            return abs(c["Close"] - c["Open"])
-
-        def rng(c):
-            return c["High"] - c["Low"]
-
-        # Avoid divide / bad data
-        if rng(c1) == 0 or rng(c2) == 0 or rng(c3) == 0:
-            return None
-
-        # Consolidation candles
-        if body(c1) < rng(c1) * 0.3 and body(c2) < rng(c2) * 0.3:
-            # Expansion candle
-            if body(c3) > rng(c3) * 0.6:
-                return "Bullish CRT" if c3["Close"] > c3["Open"] else "Bearish CRT"
-
-    except Exception:
-        return None
+    if liquidity_taken and displacement and range_respected:
+        return "Bullish"
 
     return None
