@@ -1,10 +1,7 @@
 from fastapi import FastAPI, Query
-from app.scanner import run_crt_scan
+from scanner import run_crt_scan
 
-app = FastAPI(
-    title="CRT Screener Backend",
-    version="1.0.0"
-)
+app = FastAPI(title="CRT Screener Backend")
 
 @app.get("/")
 def root():
