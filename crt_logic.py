@@ -14,9 +14,7 @@ def classify_crt(df):
     range2 = c2["High"] - c2["Low"]
     range3 = c3["High"] - c3["Low"]
 
-    # Consolidation candles
     if body1 < range1 * 0.3 and body2 < range2 * 0.3:
-        # Expansion candle
         if body3 > range3 * 0.6:
             return "Bullish CRT" if c3["Close"] > c3["Open"] else "Bearish CRT"
 
