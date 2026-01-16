@@ -1,34 +1,37 @@
-@app.get("/scan")
-def scan(tf: str = "daily", demo: bool = False):
-    # 🔹 DEMO MODE (for testing frontend)
-    if demo:
-        results = [
-            {
-                "symbol": "EURUSD",
-                "crt": "Bullish",
-                "timeframe": tf
-            },
-            {
-                "symbol": "USDJPY",
-                "crt": "Bearish",
-                "timeframe": tf
-            }
-        ]
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
 
-        return {
-            "timeframe": tf,
-            "total": len(results),
-            "results": results
-        }
+from scanner import scan_symbol
+from universe import get_us_stocks
 
-    # 🔹 REAL SCAN MODE
-    tf_map = {
-        "daily": "1d",
-        "4h": "4h",
-        "1h": "1h"
+app = FastAPI(title="CRT Screener Backend")
+
+# CORS (allow frontend access)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Timeframe map
+TF_MAP = {
+    "daily": "1d",
+    "4h": "4h",
+    "1h": "1h"
+}
+
+@app.get("/")
+def health():
+    return {
+        "status": "OK",
+        "service": "CRT Screener Backend"
     }
 
-    interval = tf_map.get(tf)
+@app.get("/scan")
+def scan(tf: str = Query("daily")):
+    interval = TF_MAP.get(tf)
+
     if not interval:
         return {"error": "Invalid timeframe"}
 
@@ -38,7 +41,11 @@ def scan(tf: str = "daily", demo: bool = False):
     for symbol in symbols:
         res = scan_symbol(symbol, interval)
         if res:
-            results.append(res)
+            results.append({
+                "symbol": symbol,
+                "crt": res,
+                "timeframe": tf
+            })
 
     return {
         "timeframe": tf,
