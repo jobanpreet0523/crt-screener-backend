@@ -1,16 +1,38 @@
 from fastapi import FastAPI
-from fastapi.responses import Response
+from fastapi.middleware.cors import CORSMiddleware
+
+# import your local files (same folder)
+from scanner import run_scan
 
 app = FastAPI(title="CRT Screener Backend")
 
-@app.api_route("/", methods=["GET", "HEAD"])
+# --------------------
+# ✅ CORS (FIXED)
+# --------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],        # allow all frontends
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --------------------
+# Health Check (IMPORTANT for Render)
+# --------------------
+@app.get("/")
 def root():
-    return {"status": "CRT backend running"}
+    return {"status": "CRT Screener Backend is running"}
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-@app.get("/favicon.ico")
-def favicon():
-    return Response(status_code=204)
+# --------------------
+# Main Scan API
+# --------------------
+@app.get("/scan")
+def scan(tf: str = "daily"):
+    """
+    Example:
+    /scan?tf=daily
+    /scan?tf=4h
+    """
+    data = run_scan(timeframe=tf)
+    return data
