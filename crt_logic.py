@@ -1,23 +1,23 @@
 def classify_crt(df):
-    if len(df) < 3:
+    if df is None or len(df) < 3:
         return None
 
-    c1, c2, c3 = df.iloc[-3], df.iloc[-2], df.iloc[-1]
+    c1 = df.iloc[-3]
+    c2 = df.iloc[-2]
+    c3 = df.iloc[-1]
 
-    def body(c):
-        return abs(c["Close"] - c["Open"])
+    body1 = abs(c1["Close"] - c1["Open"])
+    body2 = abs(c2["Close"] - c2["Open"])
+    body3 = abs(c3["Close"] - c3["Open"])
 
-    def candle_range(c):
-        return c["High"] - c["Low"]
+    range1 = c1["High"] - c1["Low"]
+    range2 = c2["High"] - c2["Low"]
+    range3 = c3["High"] - c3["Low"]
 
-    is_consolidation = (
-        body(c1) < candle_range(c1) * 0.3 and
-        body(c2) < candle_range(c2) * 0.3
-    )
-
-    is_expansion = body(c3) > candle_range(c3) * 0.6
-
-    if is_consolidation and is_expansion:
-        return "Bullish CRT" if c3["Close"] > c3["Open"] else "Bearish CRT"
+    # Consolidation candles
+    if body1 < range1 * 0.3 and body2 < range2 * 0.3:
+        # Expansion candle
+        if body3 > range3 * 0.6:
+            return "Bullish CRT" if c3["Close"] > c3["Open"] else "Bearish CRT"
 
     return None
