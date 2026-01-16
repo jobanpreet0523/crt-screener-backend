@@ -1,36 +1,48 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="CRT Screener Backend")
+from scanner import scan_symbol
+from universe import get_us_stocks
 
-# --------------------
-# CORS (SAFE)
-# --------------------
+app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --------------------
-# Health Check (MANDATORY)
-# --------------------
 @app.get("/")
-def root():
-    return {"status": "OK", "service": "CRT Screener Backend"}
+def health():
+    return {
+        "status": "OK",
+        "service": "CRT Screener Backend"
+    }
 
-# --------------------
-# Scan Endpoint (SAFE IMPORT)
-# --------------------
 @app.get("/scan")
-def scan(tf: str = "daily"):
-    try:
-        from scanner import run_scan
-        return run_scan(tf)
-    except Exception as e:
-        return {
-            "error": "Scanner failed",
-            "details": str(e)
-        }
+def scan(tf: str = Query("daily")):
+
+    tf_map = {
+        "daily": "1d",
+        "weekly": "1wk",
+        "monthly": "1mo"
+    }
+
+    interval = tf_map.get(tf)
+    if not interval:
+        return {"error": "Invalid timeframe"}
+
+    symbols = get_us_stocks()[:200]
+    results = []
+
+    for symbol in symbols:
+        res = scan_symbol(symbol, interval)
+        if res:
+            results.append(res)
+
+    return {
+        "timeframe": tf,
+        "total": len(results),
+        "results": results
+    }
