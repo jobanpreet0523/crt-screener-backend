@@ -2,10 +2,6 @@ from fastapi import FastAPI
 
 app = FastAPI(title="CRT Screener Backend")
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {"status": "CRT backend running"}
-
-@app.get("/health")
-def health():
-    return {"ok": True}
