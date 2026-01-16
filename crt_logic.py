@@ -2,9 +2,7 @@ def classify_crt(df):
     if df is None or len(df) < 3:
         return None
 
-    c1 = df.iloc[-3]
-    c2 = df.iloc[-2]
-    c3 = df.iloc[-1]
+    c1, c2, c3 = df.iloc[-3], df.iloc[-2], df.iloc[-1]
 
     body1 = abs(c1["Close"] - c1["Open"])
     body2 = abs(c2["Close"] - c2["Open"])
