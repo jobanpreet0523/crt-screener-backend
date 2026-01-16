@@ -1,5 +1,7 @@
 import yfinance as yf
 from crt_logic import classify_crt
+def scan_symbol(symbol, interval):
+    return "Bullish CRT"
 
 def scan_symbol(symbol: str, interval: str):
     try:
