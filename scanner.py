@@ -1,14 +1,13 @@
+from crt_logic import classify_crt
+
 def scan_symbol(symbol: str, interval: str):
-    # Your real CRT logic is here
-    # Must return None OR a dict
+    crt = classify_crt(symbol, interval)
 
-    crt_signal = detect_crt(symbol, interval)  # your logic
-
-    if not crt_signal:
+    if not crt:
         return None
 
     return {
         "symbol": symbol,
-        "crt": crt_signal,
+        "crt": crt,
         "timeframe": interval
     }
