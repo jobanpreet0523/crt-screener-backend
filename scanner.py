@@ -1,29 +1,14 @@
-import yfinance as yf
-from crt_logic import classify_crt
-def scan_symbol(symbol, interval):
-    return "Bullish CRT"
-
 def scan_symbol(symbol: str, interval: str):
-    try:
-        df = yf.download(
-            symbol,
-            interval=interval,
-            period="6mo",
-            progress=False
-        )
+    # Your real CRT logic is here
+    # Must return None OR a dict
 
-        if df is None or df.empty:
-            return None
+    crt_signal = detect_crt(symbol, interval)  # your logic
 
-        crt = classify_crt(df)
-
-        if crt:
-            return {
-                "symbol": symbol,
-                "crt": crt
-            }
-
-    except Exception:
+    if not crt_signal:
         return None
 
-    return None
+    return {
+        "symbol": symbol,
+        "crt": crt_signal,
+        "timeframe": interval
+    }
