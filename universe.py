@@ -1,10 +1,11 @@
-def get_forex_pairs():
+def get_symbols():
     return [
         "EURUSD",
         "GBPUSD",
         "USDJPY",
         "AUDUSD",
-        "USDCHF",
         "USDCAD",
-        "NZDUSD"
+        "XAUUSD",
+        "BTCUSDT",
+        "ETHUSDT"
     ]
