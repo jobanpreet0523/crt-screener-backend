@@ -3,13 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from scanner import scan_symbol
 from universe import get_symbols
-from tf_map import TF_MAP
+
+TF_MAP = {
+    "daily": "1d",
+    "4h": "4h",
+    "1h": "1h",
+    "15m": "15m"
+}
 
 app = FastAPI(title="CRT Screener Backend")
 
-# --------------------
-# CORS
-# --------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,9 +20,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --------------------
-# Health Check
-# --------------------
 @app.get("/")
 def root():
     return {
@@ -27,11 +27,8 @@ def root():
         "service": "CRT Screener Backend"
     }
 
-# --------------------
-# Scan Endpoint
-# --------------------
 @app.get("/scan")
-def scan(tf: str = Query("daily", description="Timeframe")):
+def scan(tf: str = Query("daily")):
     tf = tf.lower()
 
     if tf not in TF_MAP:
@@ -41,17 +38,13 @@ def scan(tf: str = Query("daily", description="Timeframe")):
         }
 
     interval = TF_MAP[tf]
-
     symbols = get_symbols()
     results = []
 
     for symbol in symbols:
-        try:
-            res = scan_symbol(symbol, interval)
-            if res:
-                results.append(res)
-        except Exception as e:
-            print(f"Error scanning {symbol}: {e}")
+        res = scan_symbol(symbol, interval)
+        if res:
+            results.append(res)
 
     return {
         "timeframe": tf,
