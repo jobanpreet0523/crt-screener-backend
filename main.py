@@ -1,112 +1,115 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-import yfinance as yf
+import requests
 import pandas as pd
 
-app = FastAPI(title="CRT Screener Backend")
+app = FastAPI(title="CRT Screener API")
 
-# Allow frontend (Vercel / Localhost)
+# ------------------ CORS ------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],   # lock later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -----------------------------
-# Utility: Detect CRT Pattern
-# -----------------------------
+# ------------------ CONFIG ------------------
+TV_BASE_URL = "https://scanner.tradingview.com/india/scan"
+
+TIMEFRAME_MAP = {
+    "5m": "5",
+    "15m": "15",
+    "1h": "60",
+    "4h": "240",
+    "1D": "1D"
+}
+
+# ------------------ CRT LOGIC ------------------
 def detect_crt(df: pd.DataFrame):
     """
-    REAL CRT LOGIC
-    Returns: Bullish CRT | Bearish CRT | None
+    CRT Model:
+    - Higher timeframe structure intact
+    - Lower timeframe candle closes back inside range
     """
 
-    if len(df) < 6:
+    if len(df) < 3:
         return None
 
-    # Last 6 candles
-    impulse = df.iloc[-6]
-    consolidation = df.iloc[-5:-1]
-    breakout = df.iloc[-1]
+    prev = df.iloc[-2]
+    curr = df.iloc[-1]
 
-    impulse_range = impulse["High"] - impulse["Low"]
-    avg_range = (df["High"] - df["Low"]).mean()
-
-    # Impulse must be strong
-    if impulse_range < avg_range * 1.5:
-        return None
-
-    cons_high = consolidation["High"].max()
-    cons_low = consolidation["Low"].min()
-
-    # Must stay inside impulse
-    if cons_high > impulse["High"] or cons_low < impulse["Low"]:
-        return None
-
-    # -------- Bullish CRT --------
-    if (
-        impulse["Close"] > impulse["Open"]
-        and breakout["Close"] > cons_high
-    ):
+    # Bullish CRT
+    if curr["close"] > prev["high"]:
         return "Bullish CRT"
 
-    # -------- Bearish CRT --------
-    if (
-        impulse["Close"] < impulse["Open"]
-        and breakout["Close"] < cons_low
-    ):
+    # Bearish CRT
+    if curr["close"] < prev["low"]:
         return "Bearish CRT"
 
     return None
 
+# ------------------ FETCH DATA ------------------
+def fetch_ohlc(symbol: str, timeframe: str):
+    payload = {
+        "symbols": {
+            "tickers": [symbol],
+            "query": {"types": []}
+        },
+        "columns": [
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume"
+        ]
+    }
 
-# -----------------------------
-# API Endpoint
-# -----------------------------
+    res = requests.post(TV_BASE_URL, json=payload, timeout=10)
+
+    if res.status_code != 200:
+        return None
+
+    data = res.json()["data"]
+
+    if not data:
+        return None
+
+    values = data[0]["d"]
+
+    df = pd.DataFrame(
+        [values],
+        columns=["open", "high", "low", "close", "volume"]
+    )
+
+    return df
+
+# ------------------ API ENDPOINT ------------------
 @app.get("/scan")
-def scan_crt(
-    symbol: str = Query(..., example="AAPL"),
-    timeframe: str = Query("1h", example="1h"),
+def scan(
+    symbol: str = Query(..., description="TradingView symbol"),
+    timeframe: str = Query("15m", description="Timeframe")
 ):
-    """
-    Scans a symbol for CRT pattern
-    """
+    tf = TIMEFRAME_MAP.get(timeframe)
 
-    try:
-        df = yf.download(
-            tickers=symbol,
-            period="60d",
-            interval=timeframe,
-            progress=False
-        )
+    if not tf:
+        return {"error": "Invalid timeframe"}
 
-        if df.empty:
-            return {"error": "No data found"}
+    df = fetch_ohlc(symbol, tf)
 
-        df.dropna(inplace=True)
+    if df is None:
+        return {"error": "No data received"}
 
-        crt_result = detect_crt(df)
+    crt_signal = detect_crt(df)
 
-        last = df.iloc[-1]
+    return {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "crt": crt_signal,
+        "status": "OK"
+    }
 
-        return {
-            "symbol": symbol,
-            "timeframe": timeframe,
-            "crt": crt_result or "No CRT",
-            "price": round(float(last["Close"]), 2),
-            "high": round(float(last["High"]), 2),
-            "low": round(float(last["Low"]), 2),
-        }
-
-    except Exception as e:
-        return {"error": str(e)}
-
-
-# -----------------------------
-# Health Check
-# -----------------------------
+# ------------------ ROOT ------------------
 @app.get("/")
-def health():
-    return {"status": "CRT Backend Running"}
+def root():
+    return {"status": "CRT Screener API is LIVE"}
