@@ -1,27 +1,28 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# ✅ ADD THIS HERE (ROOT HEALTH CHECK)
 @app.get("/")
 def health():
     return {"status": "alive"}
 
-# (Optional but recommended)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Your existing scan routes below
-@app.get("/scan")
-def scan(symbol: str, timeframe: str):
+@app.get("/api/crt-scan")
+def crt_scan(market: str = "NIFTY", tf: str = "15m"):
     return {
-        "symbol": symbol,
-        "timeframe": timeframe,
-        "crt": "sample"
+        "status": "ok",
+        "timeframe": tf,
+        "market": market,
+        "results": [
+            {
+                "symbol": "NIFTY",
+                "direction": "BUY",
+                "crt_type": "Bullish CRT",
+                "entry": 21850,
+                "sl": 21780,
+                "target": 22020,
+                "grade": "A+",
+                "liquidity": "BSL",
+                "htf_bias": "Bullish"
+            }
+        ]
     }
