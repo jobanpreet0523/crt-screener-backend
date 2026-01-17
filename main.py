@@ -1,12 +1,43 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-import requests
-import pandas as pd
-import time
+from typing import List, Optional
 
-app = FastAPI(title="CRT Screener API")
+# -------------------------------
+# MOCK CRT LOGIC (replace later)
+# -------------------------------
+def scan_symbol(symbol: str, interval: str):
+    """
+    REALISTIC placeholder CRT logic.
+    Replace this with your real CRT algorithm.
+    """
+    if symbol.upper().startswith("NIFTY"):
+        return {
+            "symbol": symbol,
+            "timeframe": interval,
+            "crt_type": "Bullish CRT",
+            "status": "valid"
+        }
+    return None
 
-# ------------------ CORS ------------------
+
+def get_nse_symbols(limit: int = 50):
+    """
+    NSE universe (sample).
+    You can later load from CSV or API.
+    """
+    symbols = [
+        "NIFTY", "BANKNIFTY", "RELIANCE", "TCS", "INFY",
+        "ICICIBANK", "HDFCBANK", "SBIN", "LT", "ITC",
+        "AXISBANK", "KOTAKBANK", "BHARTIARTL", "HINDUNILVR"
+    ]
+    return symbols[:limit]
+
+
+# -------------------------------
+# APP SETUP
+# -------------------------------
+app = FastAPI(title="CRT Screener Backend")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,107 +45,83 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ------------------ CONFIG ------------------
-TIMEFRAME_MAP = {
-    "5m": "5",
-    "15m": "15",
-    "1h": "60",
-    "4h": "240",
-    "1D": "1D"
-}
-
-NSE_SYMBOLS = [
-    "NSE:RELIANCE",
-    "NSE:TCS",
-    "NSE:INFY",
-    "NSE:HDFCBANK",
-    "NSE:ICICIBANK",
-    "NSE:LT",
-    "NSE:SBIN",
-    "NSE:AXISBANK",
-    "NSE:ITC",
-    "NSE:BAJFINANCE",
-]
-
-# ------------------ FETCH CANDLES ------------------
-def fetch_history(symbol, resolution, bars=12):
-    now = int(time.time())
-    url = "https://tvc4.investing.com/1.1/1/chart/history"
-
-    params = {
-        "symbol": symbol,
-        "resolution": resolution,
-        "from": now - bars * 60 * int(resolution),
-        "to": now
+# -------------------------------
+# HEALTH CHECK (IMPORTANT FOR RENDER)
+# -------------------------------
+@app.get("/")
+def health():
+    return {
+        "status": "alive",
+        "service": "CRT Screener Backend"
     }
 
-    try:
-        r = requests.get(url, params=params, timeout=5)
-        data = r.json()
-        if "c" not in data:
-            return None
 
-        return pd.DataFrame({
-            "open": data["o"],
-            "high": data["h"],
-            "low": data["l"],
-            "close": data["c"]
-        })
+# -------------------------------
+# TIMEFRAME MAP
+# -------------------------------
+TF_MAP = {
+    "5m": "5m",
+    "15m": "15m",
+    "1h": "1h",
+    "daily": "1D",
+    "weekly": "1W"
+}
 
-    except:
-        return None
 
-# ------------------ REAL CRT ------------------
-def detect_crt(df):
-    if len(df) < 4:
-        return None
+# -------------------------------
+# SINGLE SYMBOL SCAN
+# -------------------------------
+@app.get("/scan")
+def scan(
+    symbol: str = Query(..., description="TradingView symbol"),
+    timeframe: str = Query("daily", description="5m,15m,1h,daily")
+):
+    interval = TF_MAP.get(timeframe)
 
-    htf = df.iloc[-4:-2]
-    ltf = df.iloc[-2:]
+    if not interval:
+        return {
+            "error": "Invalid timeframe",
+            "allowed": list(TF_MAP.keys())
+        }
 
-    range_high = htf["high"].max()
-    range_low = htf["low"].min()
+    result = scan_symbol(symbol, interval)
 
-    last_close = ltf.iloc[-1]["close"]
+    return {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "found": bool(result),
+        "result": result
+    }
 
-    if last_close > range_high:
-        return "Bullish CRT"
 
-    if last_close < range_low:
-        return "Bearish CRT"
+# -------------------------------
+# NSE BATCH SCAN (50–200 SYMBOLS)
+# -------------------------------
+@app.get("/scan/nse")
+def scan_nse(
+    timeframe: str = "daily",
+    limit: int = Query(50, ge=10, le=200)
+):
+    interval = TF_MAP.get(timeframe)
 
-    return None
+    if not interval:
+        return {
+            "error": "Invalid timeframe",
+            "allowed": list(TF_MAP.keys())
+        }
 
-# ------------------ BATCH SCAN ------------------
-@app.get("/scan-batch")
-def scan_batch(timeframe: str = Query("15m")):
-    resolution = TIMEFRAME_MAP.get(timeframe)
-    if not resolution:
-        return []
-
+    symbols = get_nse_symbols(limit)
     results = []
 
-    for symbol in NSE_SYMBOLS:
-        df = fetch_history(symbol, resolution)
-        if df is None:
-            continue
+    for symbol in symbols:
+        res = scan_symbol(symbol, interval)
+        if res:
+            results.append(res)
 
-        crt = detect_crt(df)
-        if not crt:
-            continue
-
-        results.append({
-            "symbol": symbol,
-            "timeframe": timeframe,
-            "crt": crt,
-            "chart": f"https://www.tradingview.com/chart/?symbol={symbol}"
-        })
-
-        time.sleep(0.3)  # 🚨 rate-limit safety
-
-    return results
-
-# ------------------ ROOT ------------------
-@app.get("/")
-def root():
-    return {"status": "NSE CRT Batch Screener LIVE"}
+    return {
+        "market": "NSE",
+        "timeframe": timeframe,
+        "scanned": len(symbols),
+        "found": len(results),
+        "results": results
+    }
