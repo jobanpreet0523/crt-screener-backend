@@ -15,8 +15,6 @@ app.add_middleware(
 )
 
 # ------------------ CONFIG ------------------
-TV_HISTORY_URL = "https://symbol-search.tradingview.com/symbol_search/"
-
 TIMEFRAME_MAP = {
     "5m": "5",
     "15m": "15",
@@ -25,32 +23,48 @@ TIMEFRAME_MAP = {
     "1D": "1D"
 }
 
-# ------------------ FETCH REAL CANDLES ------------------
-def fetch_history(symbol, timeframe, bars=10):
-    url = f"https://tvc4.investing.com/1.1/1/chart/history"
+NSE_SYMBOLS = [
+    "NSE:RELIANCE",
+    "NSE:TCS",
+    "NSE:INFY",
+    "NSE:HDFCBANK",
+    "NSE:ICICIBANK",
+    "NSE:LT",
+    "NSE:SBIN",
+    "NSE:AXISBANK",
+    "NSE:ITC",
+    "NSE:BAJFINANCE",
+]
+
+# ------------------ FETCH CANDLES ------------------
+def fetch_history(symbol, resolution, bars=12):
+    now = int(time.time())
+    url = "https://tvc4.investing.com/1.1/1/chart/history"
+
     params = {
         "symbol": symbol,
-        "resolution": timeframe,
-        "from": int(time.time()) - bars * 60 * int(timeframe),
-        "to": int(time.time())
+        "resolution": resolution,
+        "from": now - bars * 60 * int(resolution),
+        "to": now
     }
 
-    r = requests.get(url, params=params, timeout=10)
-    data = r.json()
+    try:
+        r = requests.get(url, params=params, timeout=5)
+        data = r.json()
+        if "c" not in data:
+            return None
 
-    if "c" not in data:
+        return pd.DataFrame({
+            "open": data["o"],
+            "high": data["h"],
+            "low": data["l"],
+            "close": data["c"]
+        })
+
+    except:
         return None
 
-    df = pd.DataFrame({
-        "open": data["o"],
-        "high": data["h"],
-        "low": data["l"],
-        "close": data["c"]
-    })
-
-    return df
-
-# ------------------ REAL CRT LOGIC ------------------
+# ------------------ REAL CRT ------------------
 def detect_crt(df):
     if len(df) < 4:
         return None
@@ -61,44 +75,46 @@ def detect_crt(df):
     range_high = htf["high"].max()
     range_low = htf["low"].min()
 
-    last = ltf.iloc[-1]
+    last_close = ltf.iloc[-1]["close"]
 
-    if last["close"] > range_high:
+    if last_close > range_high:
         return "Bullish CRT"
 
-    if last["close"] < range_low:
+    if last_close < range_low:
         return "Bearish CRT"
 
     return None
 
-# ------------------ API ------------------
-@app.get("/scan")
-def scan(
-    symbol: str = Query(...),
-    timeframe: str = Query("15m")
-):
-    tf = TIMEFRAME_MAP.get(timeframe)
-    if not tf:
+# ------------------ BATCH SCAN ------------------
+@app.get("/scan-batch")
+def scan_batch(timeframe: str = Query("15m")):
+    resolution = TIMEFRAME_MAP.get(timeframe)
+    if not resolution:
         return []
 
-    df = fetch_history(symbol, tf)
+    results = []
 
-    if df is None:
-        return []
+    for symbol in NSE_SYMBOLS:
+        df = fetch_history(symbol, resolution)
+        if df is None:
+            continue
 
-    crt = detect_crt(df)
+        crt = detect_crt(df)
+        if not crt:
+            continue
 
-    if not crt:
-        return []
+        results.append({
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "crt": crt,
+            "chart": f"https://www.tradingview.com/chart/?symbol={symbol}"
+        })
 
-    return [{
-        "symbol": symbol,
-        "timeframe": timeframe,
-        "crt": crt,
-        "chart": f"https://www.tradingview.com/chart/?symbol={symbol}"
-    }]
+        time.sleep(0.3)  # 🚨 rate-limit safety
+
+    return results
 
 # ------------------ ROOT ------------------
 @app.get("/")
 def root():
-    return {"status": "CRT Screener API LIVE"}
+    return {"status": "NSE CRT Batch Screener LIVE"}
