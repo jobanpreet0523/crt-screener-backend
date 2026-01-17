@@ -1,17 +1,10 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from scanner import scan_symbol
-from universe import get_symbols
+from universe import get_us_stocks
 
-TF_MAP = {
-    "daily": "1d",
-    "4h": "4h",
-    "1h": "1h",
-    "15m": "15m"
-}
-
-app = FastAPI(title="CRT Screener Backend")
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,30 +13,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+TF_MAP = {
+    "daily": "1d",
+    "4h": "4h",
+    "1h": "1h"
+}
+
+
 @app.get("/")
-def root():
+def health():
     return {
         "status": "OK",
         "service": "CRT Screener Backend"
     }
 
+
 @app.get("/scan")
-def scan(tf: str = Query("daily")):
-    tf = tf.lower()
+def scan(tf: str = "daily"):
+    interval = TF_MAP.get(tf)
+    if not interval:
+        return {"error": "Invalid timeframe"}
 
-    if tf not in TF_MAP:
-        return {
-            "error": "Invalid timeframe",
-            "allowed": list(TF_MAP.keys())
-        }
-
-    interval = TF_MAP[tf]
-    symbols = get_symbols()
+    symbols = get_us_stocks()
     results = []
 
     for symbol in symbols:
         res = scan_symbol(symbol, interval)
         if res:
+            res["timeframe"] = tf
             results.append(res)
 
     return {
