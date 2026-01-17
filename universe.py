@@ -1,11 +1,9 @@
-def get_symbols():
+def get_us_stocks():
     return [
-        "EURUSD",
-        "GBPUSD",
-        "USDJPY",
-        "AUDUSD",
-        "USDCAD",
-        "XAUUSD",
-        "BTCUSDT",
-        "ETHUSDT"
+        "AAPL",
+        "MSFT",
+        "NVDA",
+        "AMZN",
+        "META",
+        "TSLA"
     ]
