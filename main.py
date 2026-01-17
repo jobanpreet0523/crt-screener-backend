@@ -2,20 +2,20 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import pandas as pd
+import time
 
 app = FastAPI(title="CRT Screener API")
 
 # ------------------ CORS ------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # lock later
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ------------------ CONFIG ------------------
-TV_BASE_URL = "https://scanner.tradingview.com/india/scan"
+TV_HISTORY_URL = "https://symbol-search.tradingview.com/symbol_search/"
 
 TIMEFRAME_MAP = {
     "5m": "5",
@@ -25,91 +25,80 @@ TIMEFRAME_MAP = {
     "1D": "1D"
 }
 
-# ------------------ CRT LOGIC ------------------
-def detect_crt(df: pd.DataFrame):
-    """
-    CRT Model:
-    - Higher timeframe structure intact
-    - Lower timeframe candle closes back inside range
-    """
+# ------------------ FETCH REAL CANDLES ------------------
+def fetch_history(symbol, timeframe, bars=10):
+    url = f"https://tvc4.investing.com/1.1/1/chart/history"
+    params = {
+        "symbol": symbol,
+        "resolution": timeframe,
+        "from": int(time.time()) - bars * 60 * int(timeframe),
+        "to": int(time.time())
+    }
 
-    if len(df) < 3:
+    r = requests.get(url, params=params, timeout=10)
+    data = r.json()
+
+    if "c" not in data:
         return None
 
-    prev = df.iloc[-2]
-    curr = df.iloc[-1]
+    df = pd.DataFrame({
+        "open": data["o"],
+        "high": data["h"],
+        "low": data["l"],
+        "close": data["c"]
+    })
 
-    # Bullish CRT
-    if curr["close"] > prev["high"]:
+    return df
+
+# ------------------ REAL CRT LOGIC ------------------
+def detect_crt(df):
+    if len(df) < 4:
+        return None
+
+    htf = df.iloc[-4:-2]
+    ltf = df.iloc[-2:]
+
+    range_high = htf["high"].max()
+    range_low = htf["low"].min()
+
+    last = ltf.iloc[-1]
+
+    if last["close"] > range_high:
         return "Bullish CRT"
 
-    # Bearish CRT
-    if curr["close"] < prev["low"]:
+    if last["close"] < range_low:
         return "Bearish CRT"
 
     return None
 
-# ------------------ FETCH DATA ------------------
-def fetch_ohlc(symbol: str, timeframe: str):
-    payload = {
-        "symbols": {
-            "tickers": [symbol],
-            "query": {"types": []}
-        },
-        "columns": [
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume"
-        ]
-    }
-
-    res = requests.post(TV_BASE_URL, json=payload, timeout=10)
-
-    if res.status_code != 200:
-        return None
-
-    data = res.json()["data"]
-
-    if not data:
-        return None
-
-    values = data[0]["d"]
-
-    df = pd.DataFrame(
-        [values],
-        columns=["open", "high", "low", "close", "volume"]
-    )
-
-    return df
-
-# ------------------ API ENDPOINT ------------------
+# ------------------ API ------------------
 @app.get("/scan")
 def scan(
-    symbol: str = Query(..., description="TradingView symbol"),
-    timeframe: str = Query("15m", description="Timeframe")
+    symbol: str = Query(...),
+    timeframe: str = Query("15m")
 ):
     tf = TIMEFRAME_MAP.get(timeframe)
-
     if not tf:
-        return {"error": "Invalid timeframe"}
+        return []
 
-    df = fetch_ohlc(symbol, tf)
+    df = fetch_history(symbol, tf)
 
     if df is None:
-        return {"error": "No data received"}
+        return []
 
-    crt_signal = detect_crt(df)
+    crt = detect_crt(df)
 
-    return {
+    if not crt:
+        return []
+
+    return [{
         "symbol": symbol,
         "timeframe": timeframe,
-        "crt": crt_signal,
-        "status": "OK"
-    }
+        "crt": crt,
+        "chart": f"https://www.tradingview.com/chart/?symbol={symbol}"
+    }]
 
 # ------------------ ROOT ------------------
 @app.get("/")
 def root():
-    return {"status": "CRT Screener API is LIVE"}
+    return {"status": "CRT Screener API LIVE"}
