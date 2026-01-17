@@ -1,17 +1,10 @@
-def detect_crt(symbol, tf):
+def classify_crt(symbol: str, interval: str):
     """
-    Returns:
-    - 'Bullish'
-    - 'Bearish'
-    - None
+    Return 'Bullish', 'Bearish', or None
     """
 
-    # Example structural filters (not easy logic)
-    liquidity_taken = True
-    displacement = True
-    range_respected = tf in ["daily", "4h"]
-
-    if liquidity_taken and displacement and range_respected:
+    # TEMP SAFE LOGIC (replace later with real CRT)
+    if symbol.endswith("USD"):
         return "Bullish"
 
     return None
