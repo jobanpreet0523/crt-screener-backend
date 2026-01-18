@@ -1,37 +1,20 @@
 # crt_logic.py
 
-def detect_crt(candles):
+def detect_crt(df):
     """
-    candles: list of OHLC candles
-    returns: dict | None
+    Simple CRT logic:
+    - Compression (lower range)
+    - Break structure potential
     """
 
-    if not candles or len(candles) < 3:
-        return None
+    if df is None or len(df) < 20:
+        return False
 
-    prev = candles[-3]
-    base = candles[-2]
-    curr = candles[-1]
+    recent = df.tail(10)
 
-    # Basic CRT logic (you can enhance later)
-    if (
-        base["low"] < prev["low"]
-        and curr["close"] > base["high"]
-    ):
-        return {
-            "type": "BULLISH_CRT",
-            "base_high": base["high"],
-            "base_low": base["low"]
-        }
+    high_range = recent["High"].max()
+    low_range = recent["Low"].min()
 
-    if (
-        base["high"] > prev["high"]
-        and curr["close"] < base["low"]
-    ):
-        return {
-            "type": "BEARISH_CRT",
-            "base_high": base["high"],
-            "base_low": base["low"]
-        }
+    compression = (high_range - low_range) / low_range < 0.03  # <3%
 
-    return None
+    return compression
