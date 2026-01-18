@@ -1,28 +1,25 @@
 # data.py
 
-def get_ohlc(symbol: str, timeframe: str = "1D", limit: int = 100):
+import yfinance as yf
+import pandas as pd
+
+
+def get_ohlc(symbol: str, interval="1d", period="6mo"):
     """
-    Temporary dummy OHLC provider
-    Replace later with NSE / broker / TV data
+    Fetch OHLC data from Yahoo Finance for NSE stocks
     """
 
-    candles = []
+    ticker = symbol + ".NS"   # NSE suffix
+    df = yf.download(
+        ticker,
+        interval=interval,
+        period=period,
+        progress=False
+    )
 
-    price = 100.0
+    if df.empty:
+        return None
 
-    for _ in range(limit):
-        open_ = price
-        high = open_ * 1.01
-        low = open_ * 0.99
-        close = (high + low) / 2
+    df = df.reset_index()
 
-        candles.append({
-            "open": open_,
-            "high": high,
-            "low": low,
-            "close": close
-        })
-
-        price = close
-
-    return candles
+    return df[["Date", "Open", "High", "Low", "Close", "Volume"]]
