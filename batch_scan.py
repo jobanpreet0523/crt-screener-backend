@@ -1,17 +1,18 @@
-from engine import run_single_scan
-from symbols import get_symbols
+# batch_scan.py
 
-def run_batch_scan(market="NIFTY", timeframe="15m", limit=200):
-    symbols = get_symbols(market)[:limit]
+from engine import run_single_scan
+
+def run_batch_scan(symbols, timeframe):
     results = []
 
     for symbol in symbols:
         try:
-            scan = run_single_scan(symbol, timeframe)
-            if scan:
-                results.append(scan)
+            result = run_single_scan(symbol, timeframe)
+            results.append(result)
         except Exception as e:
-            print(f"Error scanning {symbol}: {e}")
+            results.append({
+                "symbol": symbol,
+                "error": str(e)
+            })
 
     return results
-
