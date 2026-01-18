@@ -1,18 +1,21 @@
-# batch_scan.py
+from universe import NSE_200
+from crt_logic import detect_crt
 
-from engine import run_single_scan
-
-def run_batch_scan(symbols, timeframe):
+def scan_nse_200():
     results = []
 
-    for symbol in symbols:
+    for symbol in NSE_200:
         try:
-            result = run_single_scan(symbol, timeframe)
-            results.append(result)
+            crt = detect_crt(symbol)
+            if crt:
+                results.append({
+                    "symbol": symbol,
+                    "crt": crt
+                })
         except Exception as e:
-            results.append({
-                "symbol": symbol,
-                "error": str(e)
-            })
+            print(f"Error scanning {symbol}: {e}")
 
-    return results
+    return {
+        "scanned": len(NSE_200),
+        "matches": results
+    }
