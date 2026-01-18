@@ -1,37 +1,37 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Create app
-app = FastAPI(title="CRT Screener Backend", version="1.0")
+app = FastAPI(title="CRT Screener Backend")
 
-# CORS (VERY IMPORTANT for frontend)
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # later you can restrict to frontend URL
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -------------------------------
-# Health Check (Render needs this)
-# -------------------------------
+# Root (browser safe)
 @app.get("/")
+def root():
+    return {"status": "CRT Screener Backend Running"}
+
+# Health check
+@app.get("/health")
 def health():
     return {"status": "alive"}
 
-# -------------------------------
 # CRT Scan API
-# -------------------------------
-@app.get("/scan")
-def scan_market():
+@app.get("/api/crt-scan")
+def crt_scan(market: str = "NIFTY", tf: str = "15m"):
     return {
         "status": "ok",
-        "timeframe": "15m",
-        "market": "NIFTY",
+        "market": market,
+        "timeframe": tf,
         "results": [
             {
-                "symbol": "NIFTY",
+                "symbol": market,
                 "direction": "BUY",
                 "crt_type": "Bullish CRT",
                 "entry": 21850,
@@ -40,18 +40,6 @@ def scan_market():
                 "grade": "A+",
                 "liquidity": "BSL",
                 "htf_bias": "Bullish"
-            },
-            {
-                "symbol": "BANKNIFTY",
-                "direction": "SELL",
-                "crt_type": "Bearish CRT",
-                "entry": 46250,
-                "sl": 46400,
-                "target": 45850,
-                "grade": "A",
-                "liquidity": "SSL",
-                "htf_bias": "Bearish"
             }
         ]
     }
-
