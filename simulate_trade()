@@ -1,0 +1,7 @@
+def simulate_trade(df, entry, sl, target):
+    for _, row in df.iterrows():
+        if row["Low"] <= sl:
+            return "LOSS"
+        if row["High"] >= target:
+            return "WIN"
+    return "OPEN"
