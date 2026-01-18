@@ -1,21 +1,16 @@
-from universe import NSE_200
-from crt_logic import detect_crt
+from universe import get_universe
+from engine import run_scan   # only if this function EXISTS
 
-def scan_nse_200():
+def run_nse200_scan():
+    symbols = get_universe()
     results = []
 
-    for symbol in NSE_200:
+    for symbol in symbols:
         try:
-            crt = detect_crt(symbol)
-            if crt:
-                results.append({
-                    "symbol": symbol,
-                    "crt": crt
-                })
+            res = run_scan(symbol)
+            if res:
+                results.append(res)
         except Exception as e:
-            print(f"Error scanning {symbol}: {e}")
+            print(f"Scan error {symbol}: {e}")
 
-    return {
-        "scanned": len(NSE_200),
-        "matches": results
-    }
+    return results
