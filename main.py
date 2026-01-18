@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from scanner.batch_scan import run_batch_scan
+from batch_scan import run_batch_scan
 
 app = FastAPI()
 
