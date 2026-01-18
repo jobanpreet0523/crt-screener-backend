@@ -1,5 +1,10 @@
-def backtest_crt(df):
-    trades = []
+def run_single_scan(symbol, timeframe):
+    # logic here
+    return {
+        "symbol": symbol,
+        "direction": "BUY",
+        "grade": "A+"
+    }
 
     for i in range(20, len(df)):
         window = df.iloc[i-20:i]
