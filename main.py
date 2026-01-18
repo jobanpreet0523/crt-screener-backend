@@ -9,15 +9,7 @@ def health():
 
 @app.get("/api/crt-scan")
 def crt_scan():
-    results = run_batch_scan(
-        market="NIFTY",
-        timeframe="15m",
-        limit=200
-    )
-
     return {
         "status": "ok",
-        "timeframe": "15m",
-        "market": "NIFTY",
-        "results": results
+        "results": run_batch_scan()
     }
