@@ -3,6 +3,7 @@
 from universe import NSE_200
 from data import get_ohlc
 from crt_logic import detect_crt
+from storage import save_results
 
 
 def run_nse200_scan():
@@ -19,7 +20,8 @@ def run_nse200_scan():
                     "setup": "CRT"
                 })
 
-        except Exception as e:
-            continue  # never break batch scan
+        except Exception:
+            continue
 
+    save_results(results)
     return results
