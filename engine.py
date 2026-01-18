@@ -1,29 +1,18 @@
+# engine.py
+
 def run_single_scan(symbol, timeframe):
-    # logic here
+    """
+    Single-symbol CRT scan (SAFE placeholder)
+    """
     return {
         "symbol": symbol,
+        "timeframe": timeframe,
         "direction": "BUY",
-        "grade": "A+"
+        "crt_type": "Bullish CRT",
+        "entry": None,
+        "sl": None,
+        "target": None,
+        "grade": "A",
+        "liquidity": "BSL",
+        "htf_bias": "Bullish"
     }
-
-    for i in range(20, len(df)):
-        window = df.iloc[i-20:i]
-
-        crt = detect_bullish_crt(window)
-        if not crt:
-            continue
-
-        entry = crt["entry"]
-        sl = crt["sl"]
-        target = entry + (entry - sl) * 2
-
-        outcome = simulate_trade(df.iloc[i:], entry, sl, target)
-
-        trades.append({
-            "entry": entry,
-            "sl": sl,
-            "target": target,
-            "result": outcome
-        })
-
-    return trades
