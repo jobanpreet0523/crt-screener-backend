@@ -1,40 +1,18 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from scanner.batch_scan import run_batch_scan
 
 app = FastAPI()
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ✅ Health check (ROOT)
 @app.get("/")
 def health():
     return {"status": "alive"}
 
-# ✅ CRT Scan API
-@app.get("/api/crt-scan")
-def crt_scan(market: str = "NIFTY", tf: str = "15m"):
+@app.get("/api/nse-batch-scan")
+def nse_batch_scan():
+    results = run_batch_scan()
+
     return {
         "status": "ok",
-        "timeframe": tf,
-        "market": market,
-        "results": [
-            {
-                "symbol": "NIFTY",
-                "direction": "BUY",
-                "crt_type": "Bullish CRT",
-                "entry": 21850,
-                "sl": 21780,
-                "target": 22020,
-                "grade": "A+",
-                "liquidity": "BSL",
-                "htf_bias": "Bullish"
-            }
-        ]
+        "count": len(results),
+        "results": results
     }
