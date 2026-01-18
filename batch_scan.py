@@ -1,19 +1,17 @@
-from scanner.engine import run_single_scan
+from engine import run_single_scan
+from symbols import get_symbols
 
 def run_batch_scan(market="NIFTY", timeframe="15m", limit=200):
-    symbols = [
-        "RELIANCE.NS",
-        "TCS.NS",
-        "INFY.NS",
-        "HDFCBANK.NS"
-        # later we auto-load 200 NSE stocks
-    ]
-
+    symbols = get_symbols(market)[:limit]
     results = []
 
-    for symbol in symbols[:limit]:
-        data = run_single_scan(symbol, timeframe)
-        if data:
-            results.append(data)
+    for symbol in symbols:
+        try:
+            scan = run_single_scan(symbol, timeframe)
+            if scan:
+                results.append(scan)
+        except Exception as e:
+            print(f"Error scanning {symbol}: {e}")
 
     return results
+
