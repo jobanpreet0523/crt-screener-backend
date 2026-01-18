@@ -1,16 +1,24 @@
 from universe import get_universe
-from engine import run_scan   # only if this function EXISTS
+from crt_logic import detect_crt
+from data import get_ohlc   # must exist
 
 def run_nse200_scan():
-    symbols = get_universe()
     results = []
 
-    for symbol in symbols:
+    for symbol in get_universe():
         try:
-            res = run_scan(symbol)
-            if res:
-                results.append(res)
+            candles = get_ohlc(symbol, timeframe="1D")
+            crt = detect_crt(candles)
+
+            if crt:
+                results.append({
+                    "symbol": symbol,
+                    "signal": crt["type"],
+                    "base_high": crt["base_high"],
+                    "base_low": crt["base_low"]
+                })
+
         except Exception as e:
-            print(f"Scan error {symbol}: {e}")
+            print(f"Scan failed {symbol}: {e}")
 
     return results
