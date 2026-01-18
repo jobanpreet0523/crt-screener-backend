@@ -1,22 +1,15 @@
 from fastapi import FastAPI
-from engine import run_backtest
-from batch_scan import scan_nse_200
-from scheduler import start_scheduler
+from batch_scan import run_nse200_scan
 
-app = FastAPI(title="CRT Screener Backend")
-
-@app.on_event("startup")
-def startup_event():
-    start_scheduler()
+app = FastAPI()
 
 @app.get("/")
-def root():
-    return {"status": "CRT Backend Live 🚀"}
+def health():
+    return {"status": "ok"}
 
-@app.post("/backtest")
-def backtest(payload: dict):
-    return run_backtest(payload)
-
-@app.post("/scan")
-def manual_scan():
-    return scan_nse_200()
+@app.get("/scan/nse200")
+def scan_nse_200():
+    return {
+        "count": len(run_nse200_scan()),
+        "results": run_nse200_scan()
+    }
