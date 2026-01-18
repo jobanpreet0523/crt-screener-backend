@@ -1,16 +1,14 @@
 from fastapi import FastAPI
-from batch_scan import run_nse200_scan
+from storage import load_results
 
-app = FastAPI(title="CRT Screener Backend")
+app = FastAPI()
+
 
 @app.get("/")
 def health():
-    return {"status": "ok"}
+    return {"status": "CRT backend live"}
+
 
 @app.get("/scan/nse200")
-def scan_nse200():
-    results = run_nse200_scan()
-    return {
-        "count": len(results),
-        "results": results
-    }
+def get_scan_results():
+    return load_results()["results"]
