@@ -1,15 +1,17 @@
 from fastapi import FastAPI
 from batch_scan import run_batch_scan
 
-app = FastAPI()
+app = FastAPI(title="CRT Screener Backend")
 
 @app.get("/")
-def health():
+def root():
     return {"status": "alive"}
 
 @app.get("/api/crt-scan")
 def crt_scan():
     return {
         "status": "ok",
+        "market": "NIFTY",
+        "timeframe": "15m",
         "results": run_batch_scan()
     }
