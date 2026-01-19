@@ -1,8 +1,3 @@
-# universe.py
-# NSE 200 stock universe (Cash Market)
-# Source aligned with NSE Indices – NIFTY 200
-# Use with CRT Scanner / Backtest / Batch Jobs
-
 NSE_200 = [
     "ADANIENT","ADANIPORTS","AMBUJACEM","APOLLOHOSP","ASIANPAINT",
     "ATUL","AUROPHARMA","AXISBANK","BAJAJ-AUTO","BAJAJFINSV",
@@ -35,7 +30,3 @@ NSE_200 = [
     "ULTRACEMCO","UPL","VEDL","VOLTAS","WHIRLPOOL",
     "WIPRO","YESBANK","ZEEL","ZYDUSLIFE"
 ]
-
-# Optional quick check
-if __name__ == "__main__":
-    print("Total NSE 200 symbols:", len(NSE_200))
