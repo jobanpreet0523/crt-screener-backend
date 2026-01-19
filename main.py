@@ -1,23 +1,28 @@
 from fastapi import FastAPI
+from universe import NSE_200
 from data import get_ohlc
-from backtest_engine import backtest_long
+from scanner import is_doji
 
 app = FastAPI()
 
-@app.get("/")
-def root():
-    return {"status": "CRT Screener Live"}
+@app.get("/screener/doji")
+def doji_screener():
+    results = []
 
-@app.get("/backtest/{symbol}")
-def backtest(symbol: str):
-    df = get_ohlc(symbol.upper(), "2022-01-01", "2025-01-01")
-    if df.empty:
-        return {"error": "No data"}
+    for symbol in NSE_200:
+        ohlc = get_ohlc(symbol)
+        if not ohlc:
+            continue
 
-    trades = backtest_long(df)
-    return {
-        "symbol": symbol,
-        "total_trades": len(trades),
-        "wins": int((trades["result"] == "WIN").sum()),
-        "losses": int((trades["result"] == "LOSS").sum())
-    }
+        if is_doji(
+            ohlc["open"],
+            ohlc["high"],
+            ohlc["low"],
+            ohlc["close"]
+        ):
+            results.append({
+                "symbol": symbol,
+                **ohlc
+            })
+
+    return results
