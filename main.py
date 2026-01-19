@@ -1,27 +1,23 @@
-import os
-from fastapi import FastAPI, Header, HTTPException
-from batch_scan import run_nse200_scan
+from fastapi import FastAPI
+from data import get_ohlc
+from backtest_engine import backtest_long
 
 app = FastAPI()
 
-CRON_SECRET = os.getenv("CRON_SECRET")
-
 @app.get("/")
-def health():
-    return {"status": "CRT Screener running"}
+def root():
+    return {"status": "CRT Screener Live"}
 
-@app.post("/cron/run")
-def cron_run(x_cron_secret: str = Header(None)):
-    if not CRON_SECRET:
-        raise HTTPException(status_code=500, detail="CRON_SECRET not set")
+@app.get("/backtest/{symbol}")
+def backtest(symbol: str):
+    df = get_ohlc(symbol.upper(), "2022-01-01", "2025-01-01")
+    if df.empty:
+        return {"error": "No data"}
 
-    if x_cron_secret != CRON_SECRET:
-        raise HTTPException(status_code=401, detail="Unauthorized cron request")
-
-    result = run_nse200_scan()
-
+    trades = backtest_long(df)
     return {
-        "status": "success",
-        "scanned": result.get("count"),
-        "timestamp": result.get("timestamp")
+        "symbol": symbol,
+        "total_trades": len(trades),
+        "wins": int((trades["result"] == "WIN").sum()),
+        "losses": int((trades["result"] == "LOSS").sum())
     }
