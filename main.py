@@ -1,72 +1,27 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-from data import get_ohlc
-from universe import NSE_200
+app = FastAPI()
 
-app = FastAPI(
-    title="CRT Screener Backend",
-    version="1.0.0"
-)
+# TEMP sample universe (replace with NSE 200 later)
+UNIVERSE = [
+    {"symbol": "RELIANCE", "close": 2500, "volume": 1200000},
+    {"symbol": "TCS", "close": 3600, "volume": 300000},
+    {"symbol": "INFY", "close": 1450, "volume": 900000},
+]
 
-# -----------------------------
-# CORS (important for Vercel)
-# -----------------------------
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   # you can restrict later
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+class ScanRequest(BaseModel):
+    min_price: float
+    min_volume: int
+    model: str
 
-# -----------------------------
-# Health Check
-# -----------------------------
-@app.get("/")
-def health():
-    return {"status": "CRT Screener Backend Running"}
-
-# -----------------------------
-# Doji Logic
-# -----------------------------
-def is_doji(o, h, l, c):
-    body = abs(c - o)
-    range_ = h - l
-    if range_ == 0:
-        return False
-    return body <= (range_ * 0.1)  # 10% body = doji
-
-# -----------------------------
-# Doji Screener (Chartink style)
-# -----------------------------
-@app.get("/screener/doji")
-def doji_screener():
+@app.post("/scan")
+def scan(req: ScanRequest):
     results = []
 
-    for symbol in NSE_200:
-        try:
-            df = get_ohlc(symbol)
-            if df is None or len(df) == 0:
-                continue
-
-            last = df.iloc[-1]
-
-            o = float(last["Open"])
-            h = float(last["High"])
-            l = float(last["Low"])
-            c = float(last["Close"])
-
-            if is_doji(o, h, l, c):
-                results.append({
-                    "symbol": symbol,
-                    "open": round(o, 2),
-                    "high": round(h, 2),
-                    "low": round(l, 2),
-                    "close": round(c, 2),
-                })
-
-        except Exception as e:
-            print(f"Error in {symbol}: {e}")
+    for stock in UNIVERSE:
+        if stock["close"] >= req.min_price and stock["volume"] >= req.min_volume:
+            stock["grade"] = "A+" if stock["volume"] > 1_000_000 else "B"
+            results.append(stock)
 
     return results
