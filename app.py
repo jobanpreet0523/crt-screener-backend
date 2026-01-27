@@ -1,53 +1,35 @@
-from fastapi import FastAPI, Query
-from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi import FastAPI, Query, HTTPException
 from data_feed import get_ohlc
 from crt_structure import analyze_crt
 from liquidity import analyze_liquidity
 
-app = FastAPI(
-    title="CRT Screener Backend",
-    version="1.0.0"
-)
+app = FastAPI(title="CRT Screener API")
 
-# CORS (Frontend safe)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.get("/")
-def health_check():
-    return {"status": "CRT backend running 🚀"}
+def root():
+    return {
+        "status": "ok",
+        "message": "CRT Screener Backend is running"
+    }
+
 
 @app.get("/scan")
 def scan_market(
-    symbol: str = Query(..., description="Stock symbol", example="AAPL"),
-    timeframe: str = Query(..., description="Timeframe", example="1D"),
+    symbol: str = Query(..., example="AAPL"),
+    timeframe: str = Query(..., example="1D"),
 ):
-    # Fetch OHLC data
-    ohlc_data = get_ohlc(symbol, timeframe)
+    df = get_ohlc(symbol, timeframe)
 
-    # Validate data
-    if ohlc_data is None or ohlc_data.empty:
-        return {
-            "error": "No OHLC data found",
-            "symbol": symbol,
-            "timeframe": timeframe
-        }
+    if df is None:
+        raise HTTPException(status_code=404, detail="No market data found")
 
-    # Analysis
-    crt_result = analyze_crt(ohlc_data)
-    liquidity_result = analyze_liquidity(ohlc_data)
+    crt_result = analyze_crt(df)
+    liquidity_result = analyze_liquidity(df)
 
-    # Response
     return {
         "symbol": symbol,
         "timeframe": timeframe,
         "crt": crt_result,
-        "liquidity": liquidity_result,
-        "data": ohlc_data.to_dict(orient="records")
+        "liquidity": liquidity_result
     }
