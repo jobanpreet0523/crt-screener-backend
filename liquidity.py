@@ -2,21 +2,21 @@ import pandas as pd
 
 
 def analyze_liquidity(df: pd.DataFrame) -> dict:
-    highs = df["High"]
-    lows = df["Low"]
+    if df is None or len(df) < 5:
+        return {"liquidity": "unknown"}
 
-    buyside_liquidity = highs[:-1].max()
-    sellside_liquidity = lows[:-1].min()
+    highs = df["High"].tail(5)
+    lows = df["Low"].tail(5)
 
-    last_high = highs.iloc[-1]
-    last_low = lows.iloc[-1]
-
-    swept_buyside = last_high > buyside_liquidity
-    swept_sellside = last_low < sellside_liquidity
+    equal_highs = highs.max() - highs.min() < 0.1
+    equal_lows = lows.max() - lows.min() < 0.1
 
     return {
-        "buyside_level": round(buyside_liquidity, 2),
-        "sellside_level": round(sellside_liquidity, 2),
-        "buyside_swept": swept_buyside,
-        "sellside_swept": swept_sellside
+        "equal_highs": bool(equal_highs),
+        "equal_lows": bool(equal_lows),
+        "liquidity_zone": (
+            "buy_side" if equal_highs else
+            "sell_side" if equal_lows else
+            "none"
+        )
     }
