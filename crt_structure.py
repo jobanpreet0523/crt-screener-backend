@@ -2,18 +2,20 @@ import pandas as pd
 
 
 def analyze_crt(df: pd.DataFrame) -> dict:
-    high = df["High"].max()
-    low = df["Low"].min()
-    close = df["Close"].iloc[-1]
+    if df is None or len(df) < 3:
+        return {"valid": False}
 
-    equilibrium = (high + low) / 2
+    high = df["High"].iloc[-1]
+    low = df["Low"].iloc[-1]
+    prev_high = df["High"].iloc[-2]
+    prev_low = df["Low"].iloc[-2]
 
-    bias = "discount" if close < equilibrium else "premium"
+    bullish_crt = low > prev_low and high > prev_high
+    bearish_crt = high < prev_high and low < prev_low
 
     return {
-        "range_high": round(high, 2),
-        "range_low": round(low, 2),
-        "equilibrium": round(equilibrium, 2),
-        "current_close": round(close, 2),
-        "bias": bias
+        "valid": bullish_crt or bearish_crt,
+        "bias": "bullish" if bullish_crt else "bearish" if bearish_crt else "neutral",
+        "range_high": float(high),
+        "range_low": float(low),
     }
