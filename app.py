@@ -1,41 +1,53 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
 
-from crt_scanner import scan_crt_setup
+from data_feed import get_ohlc
+from crt_structure import analyze_crt
+from liquidity import analyze_liquidity
 
-app = FastAPI(title="CRT Screener Backend")
+app = FastAPI(
+    title="CRT Screener Backend",
+    version="1.0.0"
+)
 
+# CORS (Frontend safe)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
-def health():
-    return {"status": "CRT backend running"}
+def health_check():
+    return {"status": "CRT backend running 🚀"}
 
-
-@app.get("/scan/crt")
-def scan_crt(
-    symbol: str = Query(..., example="NAS100"),
+@app.get("/scan")
+def scan_market(
+    symbol: str = Query(..., description="Stock symbol", example="AAPL"),
+    timeframe: str = Query(..., description="Timeframe", example="1D"),
 ):
-    """
-    CRT Scan API
-    """
+    # Fetch OHLC data
+    ohlc_data = get_ohlc(symbol, timeframe)
 
-    # ⚠️ MOCK DATA for now (real feed comes later)
-    htf_candles = [
-        {"open": 100, "high": 110, "low": 95, "close": 108},
-        {"open": 108, "high": 115, "low": 105, "close": 112},
-    ]
+    # Validate data
+    if ohlc_data is None or ohlc_data.empty:
+        return {
+            "error": "No OHLC data found",
+            "symbol": symbol,
+            "timeframe": timeframe
+        }
 
-    ltf_candles = [
-        {"open": 112, "high": 113, "low": 109, "close": 110},
-        {"open": 110, "high": 111, "low": 106, "close": 107},
-    ]
+    # Analysis
+    crt_result = analyze_crt(ohlc_data)
+    liquidity_result = analyze_liquidity(ohlc_data)
 
-    result = scan_crt_setup(
-        symbol=symbol,
-        htf_candles=htf_candles,
-        ltf_candles=ltf_candles,
-        timestamp_utc=datetime.utcnow()
-    )
-
-    return result
+    # Response
+    return {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "crt": crt_result,
+        "liquidity": liquidity_result,
+        "data": ohlc_data.to_dict(orient="records")
+    }
