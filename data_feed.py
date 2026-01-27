@@ -1,5 +1,6 @@
 import yfinance as yf
 import pandas as pd
+from typing import Optional
 
 
 TIMEFRAME_MAP = {
@@ -7,33 +8,27 @@ TIMEFRAME_MAP = {
     "1W": "1wk",
     "1M": "1mo",
     "15m": "15m",
-    "5m": "5m"
+    "5m": "5m",
 }
 
 
-def get_ohlc(symbol: str, timeframe: str) -> pd.DataFrame:
+def get_ohlc(symbol: str, timeframe: str) -> Optional[pd.DataFrame]:
     interval = TIMEFRAME_MAP.get(timeframe)
 
-    if not interval:
+    if interval is None:
         return None
 
     try:
-        data = yf.download(
-            tickers=symbol,
-            period="6mo",
-            interval=interval,
-            progress=False
-        )
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period="1y", interval=interval)
 
-        if data.empty:
+        if df.empty:
             return None
 
-        data.reset_index(inplace=True)
-        data = data[["Open", "High", "Low", "Close", "Volume"]]
-        data.dropna(inplace=True)
+        df = df.reset_index()
 
-        return data
+        return df[["Open", "High", "Low", "Close", "Volume"]]
 
     except Exception as e:
-        print("Data feed error:", e)
+        print(f"Data fetch error: {e}")
         return None
