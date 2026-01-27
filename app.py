@@ -1,11 +1,46 @@
-from fastapi import FastAPI, Query, HTTPException
-from data_feed import get_ohlc
-from crt_structure import analyze_crt
-from liquidity import analyze_liquidity
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List
 
-app = FastAPI(title="CRT Screener API")
+# =============================
+# APP INIT
+# =============================
+app = FastAPI(
+    title="CRT Screener Backend",
+    description="Backend API for CRT-based market screener",
+    version="1.0.0"
+)
+
+# =============================
+# CORS (VERY IMPORTANT)
+# =============================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allow Vercel / frontend
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# =============================
+# MODELS
+# =============================
+class ScanRequest(BaseModel):
+    market: str
+    timeframe: str
 
 
+class ScanResult(BaseModel):
+    symbol: str
+    timeframe: str
+    pattern: str
+    bias: str
+
+
+# =============================
+# HEALTH CHECK
+# =============================
 @app.get("/")
 def root():
     return {
@@ -14,22 +49,37 @@ def root():
     }
 
 
-@app.get("/scan")
-def scan_market(
-    symbol: str = Query(..., example="AAPL"),
-    timeframe: str = Query(..., example="1D"),
-):
-    df = get_ohlc(symbol, timeframe)
+# =============================
+# SCAN ENDPOINT
+# =============================
+@app.post("/scan", response_model=List[ScanResult])
+def scan_market(request: ScanRequest):
+    try:
+        # 🔧 TEMP MOCK DATA (replace with real CRT logic)
+        results = [
+            {
+                "symbol": "NASDAQ:AAPL",
+                "timeframe": request.timeframe,
+                "pattern": "Doji",
+                "bias": "Bullish"
+            },
+            {
+                "symbol": "NASDAQ:MSFT",
+                "timeframe": request.timeframe,
+                "pattern": "Liquidity Sweep",
+                "bias": "Bearish"
+            }
+        ]
 
-    if df is None:
-        raise HTTPException(status_code=404, detail="No market data found")
+        return results
 
-    crt_result = analyze_crt(df)
-    liquidity_result = analyze_liquidity(df)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    return {
-        "symbol": symbol,
-        "timeframe": timeframe,
-        "crt": crt_result,
-        "liquidity": liquidity_result
-    }
+
+# =============================
+# OPTIONAL: RENDER SAFE START
+# =============================
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
