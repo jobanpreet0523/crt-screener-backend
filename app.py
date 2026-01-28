@@ -1,50 +1,33 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
+# Create FastAPI app
 app = FastAPI(
-    title="CRT Screener API",
-    version="1.0.0"
+    title="CRT Screener Backend",
+    description="FastAPI backend for CRT trading screener",
+    version="1.0.0",
 )
 
-# CORS (VERY IMPORTANT)
+# CORS (safe default – frontend friendly)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # later restrict to Vercel URL
+    allow_origins=["*"],  # change later to your frontend domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -------- MODELS --------
-class ScanRequest(BaseModel):
-    market: str
-    timeframe: str
-
-
-# -------- ROUTES --------
+# Health check (VERY IMPORTANT for Railway)
 @app.get("/")
 def health_check():
-    return {"status": "CRT Screener backend running"}
+    return {"status": "alive", "service": "crt-screener-backend"}
 
-@app.post("/scan")
-def scan_market(req: ScanRequest):
-    # Dummy response (replace with real logic)
-    return {
-        "market": req.market,
-        "timeframe": req.timeframe,
-        "results": [
-            {
-                "symbol": "AAPL",
-                "pattern": "CRT Doji",
-                "bias": "Bullish",
-                "price": 195.40
-            },
-            {
-                "symbol": "MSFT",
-                "pattern": "CRT Liquidity Sweep",
-                "bias": "Bearish",
-                "price": 412.10
-            }
-        ]
-    }
+# Example test endpoint
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
+
+# --- future CRT endpoints go below ---
+# @app.get("/scan")
+# def scan():
+#     return {"result": "scanner coming soon"}
