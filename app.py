@@ -1,33 +1,29 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Create FastAPI app
 app = FastAPI(
     title="CRT Screener Backend",
-    description="FastAPI backend for CRT trading screener",
     version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# CORS (safe default – frontend friendly)
+# Allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # change later to your frontend domain
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Health check (VERY IMPORTANT for Railway)
 @app.get("/")
-def health_check():
-    return {"status": "alive", "service": "crt-screener-backend"}
+def root():
+    return {
+        "status": "LIVE",
+        "message": "CRT Screener Backend is running"
+    }
 
-# Example test endpoint
-@app.get("/ping")
-def ping():
-    return {"message": "pong"}
-
-# --- future CRT endpoints go below ---
-# @app.get("/scan")
-# def scan():
-#     return {"result": "scanner coming soon"}
+@app.get("/health")
+def health():
+    return {"ok": True}
