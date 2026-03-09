@@ -1,27 +1,81 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+import yfinance as yf
 
 app = FastAPI()
 
-# TEMP sample universe (replace with NSE 200 later)
-UNIVERSE = [
-    {"symbol": "RELIANCE", "close": 2500, "volume": 1200000},
-    {"symbol": "TCS", "close": 3600, "volume": 300000},
-    {"symbol": "INFY", "close": 1450, "volume": 900000},
-]
+# Allow frontend requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class ScanRequest(BaseModel):
-    min_price: float
-    min_volume: int
-    model: str
+# Home route (fix 404)
+@app.get("/")
+def home():
+    return {"message": "CRT Screener Backend Running"}
 
-@app.post("/scan")
-def scan(req: ScanRequest):
-    results = []
+# Simple Screener (Doji Example)
+@app.get("/scan")
+def scan():
+    ticker = "AAPL"
+    data = yf.download(ticker, period="5d", interval="1d")
 
-    for stock in UNIVERSE:
-        if stock["close"] >= req.min_price and stock["volume"] >= req.min_volume:
-            stock["grade"] = "A+" if stock["volume"] > 1_000_000 else "B"
-            results.append(stock)
+    if len(data) == 0:
+        return {"error": "No data"}
 
-    return results
+    last = data.iloc[-1]
+
+    open_price = float(last["Open"])
+    close_price = float(last["Close"])
+    high = float(last["High"])
+    low = float(last["Low"])
+
+    body = abs(open_price - close_price)
+    candle_range = high - low
+
+    doji = body <= candle_range * 0.1
+
+    return {
+        "ticker": ticker,
+        "open": open_price,
+        "close": close_price,
+        "high": high,
+        "low": low,
+        "doji": doji
+    }
+
+# Stock Information
+@app.get("/stock/{ticker}")
+def get_stock(ticker: str):
+    stock = yf.Ticker(ticker)
+
+    info = stock.info
+
+    return {
+        "ticker": ticker.upper(),
+        "name": info.get("longName"),
+        "price": info.get("currentPrice"),
+        "market_cap": info.get("marketCap"),
+        "pe_ratio": info.get("trailingPE"),
+        "sector": info.get("sector"),
+        "industry": info.get("industry")
+    }
+
+# Financial Statements
+@app.get("/financials/{ticker}")
+def financials(ticker: str):
+    stock = yf.Ticker(ticker)
+
+    income = stock.financials
+    balance = stock.balance_sheet
+    cashflow = stock.cashflow
+
+    return {
+        "income_statement": income.to_dict(),
+        "balance_sheet": balance.to_dict(),
+        "cash_flow": cashflow.to_dict()
+    }
