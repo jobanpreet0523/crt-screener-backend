@@ -1,81 +1,120 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
+import pandas as pd
 
 app = FastAPI()
 
-# Allow frontend requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Home route (fix 404)
 @app.get("/")
 def home():
-    return {"message": "CRT Screener Backend Running"}
+    return {"message":"Stock Research API Running"}
 
-# Simple Screener (Doji Example)
-@app.get("/scan")
-def scan():
-    ticker = "AAPL"
-    data = yf.download(ticker, period="5d", interval="1d")
+# -------- DOJI SCREENER --------
 
-    if len(data) == 0:
-        return {"error": "No data"}
+@app.get("/screener/doji/{timeframe}")
+def doji_screener(timeframe:str):
 
-    last = data.iloc[-1]
+    tickers = ["AAPL","MSFT","TSLA","NVDA","AMZN"]
 
-    open_price = float(last["Open"])
-    close_price = float(last["Close"])
-    high = float(last["High"])
-    low = float(last["Low"])
+    results = []
 
-    body = abs(open_price - close_price)
-    candle_range = high - low
+    for t in tickers:
 
-    doji = body <= candle_range * 0.1
+        if timeframe=="1d":
+            interval="1d"
+            period="5d"
 
-    return {
-        "ticker": ticker,
-        "open": open_price,
-        "close": close_price,
-        "high": high,
-        "low": low,
-        "doji": doji
-    }
+        elif timeframe=="1w":
+            interval="1wk"
+            period="1y"
 
-# Stock Information
+        elif timeframe=="1m":
+            interval="1mo"
+            period="2y"
+
+        elif timeframe=="3m":
+            interval="3mo"
+            period="5y"
+
+        else:
+            return {"error":"invalid timeframe"}
+
+        df = yf.download(t,period=period,interval=interval)
+
+        if len(df)==0:
+            continue
+
+        last = df.iloc[-1]
+
+        body = abs(last["Open"]-last["Close"])
+        range_ = last["High"]-last["Low"]
+
+        if body <= range_*0.1:
+
+            results.append({
+                "ticker":t,
+                "open":float(last["Open"]),
+                "close":float(last["Close"]),
+                "high":float(last["High"]),
+                "low":float(last["Low"])
+            })
+
+    return {"doji_stocks":results}
+
+# -------- STOCK OVERVIEW --------
+
 @app.get("/stock/{ticker}")
-def get_stock(ticker: str):
-    stock = yf.Ticker(ticker)
+def stock_overview(ticker:str):
 
-    info = stock.info
+    s = yf.Ticker(ticker)
+
+    info = s.info
 
     return {
-        "ticker": ticker.upper(),
-        "name": info.get("longName"),
-        "price": info.get("currentPrice"),
-        "market_cap": info.get("marketCap"),
-        "pe_ratio": info.get("trailingPE"),
-        "sector": info.get("sector"),
-        "industry": info.get("industry")
+        "ticker":ticker,
+        "name":info.get("longName"),
+        "sector":info.get("sector"),
+        "industry":info.get("industry"),
+        "marketCap":info.get("marketCap"),
+        "price":info.get("currentPrice"),
+        "pe":info.get("trailingPE"),
+        "dividendYield":info.get("dividendYield")
     }
 
-# Financial Statements
+# -------- FINANCIAL STATEMENTS --------
+
 @app.get("/financials/{ticker}")
-def financials(ticker: str):
-    stock = yf.Ticker(ticker)
+def financials(ticker:str):
 
-    income = stock.financials
-    balance = stock.balance_sheet
-    cashflow = stock.cashflow
+    s = yf.Ticker(ticker)
 
     return {
-        "income_statement": income.to_dict(),
-        "balance_sheet": balance.to_dict(),
-        "cash_flow": cashflow.to_dict()
+        "income":s.financials.to_dict(),
+        "balance":s.balance_sheet.to_dict(),
+        "cashflow":s.cashflow.to_dict()
     }
+
+# -------- EARNINGS --------
+
+@app.get("/earnings/{ticker}")
+def earnings(ticker:str):
+
+    s=yf.Ticker(ticker)
+
+    return s.earnings.to_dict()
+
+# -------- DIVIDENDS --------
+
+@app.get("/dividends/{ticker}")
+def dividends(ticker:str):
+
+    s=yf.Ticker(ticker)
+
+    return s.dividends.to_dict()
