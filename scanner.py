@@ -1,57 +1,76 @@
-import React, { useState, useMemo } from 'react';
-
-// Mock Data structure representing stocks with Open, High, Low, Close (OHLC) values
-const ALL_STOCKS_DATA = [
-  { id: 1, name: "Tata Consultancy Services Ltd.", symbol: "TCS", open: 3850, high: 3890, low: 3840, close: 3851, volume: "1.2M" },
-  { id: 2, name: "Reliance Industries Ltd.", symbol: "RELIANCE", open: 2450, high: 2480, low: 2410, close: 2450.5, volume: "3.4M" },
-  { id: 3, name: "Infosys Ltd.", symbol: "INFY", open: 1420, high: 1460, low: 1410, close: 1455, volume: "2.1M" }, // Not a Doji
-  { id: 4, name: "HDFC Bank Ltd.", symbol: "HDFCBANK", open: 1510, high: 1530, low: 1505, close: 1511, volume: "4.8M" },
-  { id: 5, name: "Wipro Ltd.", symbol: "WIPRO", open: 420, high: 435, low: 418, close: 432, volume: "950K" }, // Not a Doji
-  { id: 6, name: "State Bank of India", symbol: "SBIN", open: 780, high: 795, low: 778, close: 780.2, volume: "6.1M" },
-];
+import React, { useState, useEffect, useMemo } from 'react';
 
 export default function DojiScreener() {
-  const [timeframe, setTimeframe] = useState('1D');
+  // State Matrix
+  const [timeframe, setTimeframe] = useState('1D'); // UI state tracking (uppercase)
+  const [liveStocksData, setLiveStocksData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'symbol', direction: 'ascending' });
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
 
-  // 1. Technical Screening Logic (Doji Equation Implementation)
-  const screenedStocks = useMemo(() => {
-    return ALL_STOCKS_DATA.filter(stock => {
-      const body = Math.abs(stock.open - stock.close);
-      const totalRange = stock.high - stock.low;
+  // Define API Production Server Base URI - Update this when your Render instance goes live!
+  const BASE_API_URL = "http://127.0.0.1:8000"; 
+
+  // Asynchronous Effect Engine calling your exact `/scan` route
+  useEffect(() => {
+    const fetchLiveData = async () => {
+      setIsLoading(true);
+      setApiError(null);
       
-      // Doji Condition: Candle body must be less than or equal to 10% of total day range
-      const isDoji = body <= (totalRange * 0.10);
-      
-      // Simulate variations across timeframes just for ui/demonstration purposes
-      if (timeframe === '1W' && stock.id === 1) return false;
-      if (timeframe === '1M' && stock.id === 2) return false;
+      // Convert UI Timeframe state to match the lowercase keys expected by tf_params in main.py
+      const backendTf = timeframe.toLowerCase();
 
-      return isDoji;
-    });
-  }, [timeframe]);
+      try {
+        // Querying your universal scan endpoint using 'doji' filter parameters
+        const response = await fetch(`${BASE_API_URL}/scan?type=doji&tf=${backendTf}&market=NSE&limit=30`);
+        
+        if (!response.ok) {
+          throw new Error(`Server returned error status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.ok && data.results) {
+          setLiveStocksData(data.results);
+        } else {
+          setLiveStocksData([]);
+        }
+      } catch (err) {
+        console.error("FastAPI connection failure:", err);
+        setApiError("Unable to connect to trading backend engine. Ensure Uvicorn is active on port 8000.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // 2. Global Searching / Filtering Logic
+    fetchLiveData();
+  }, [timeframe]); // Fires instantly whenever the user clicks a different timeframe button
+
+  // 1. Client-Side Global Search Filtering 
   const filteredStocks = useMemo(() => {
-    return screenedStocks.filter(stock => 
-      stock.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      stock.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+    return liveStocksData.filter(stock => 
+      stock.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (stock.sector && stock.sector.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-  }, [screenedStocks, searchTerm]);
+  }, [liveStocksData, searchTerm]);
 
-  // 3. Sorting Logic
+  // 2. Client-Side Column Sorting Engine Matrix
   const sortedStocks = useMemo(() => {
     let sortableItems = [...filteredStocks];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+
+        // Safe Fallbacks handling numeric float conversions 
+        if (typeof valA === 'string') {
+          return sortConfig.direction === 'ascending' 
+            ? valA.localeCompare(valB) 
+            : valB.localeCompare(valA);
+        } else {
+          return sortConfig.direction === 'ascending' ? valA - valB : valB - valA;
         }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
-        }
-        return 0;
       });
     }
     return sortableItems;
@@ -65,14 +84,9 @@ export default function DojiScreener() {
     setSortConfig({ key, direction });
   };
 
-  // Calculate percentage change for placeholder visualization
-  const getPctChange = (stock) => {
-    const chg = ((stock.close - stock.open) / stock.open) * 100;
-    return chg.toFixed(2);
-  };
-
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-8 text-white">
+      
       {/* Timeframe Selectors Header */}
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold mb-4">Doji Screener</h2>
@@ -98,36 +112,51 @@ export default function DojiScreener() {
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
           <div>
             <h3 className="text-lg font-semibold">Scan Results</h3>
-            <p className="text-sm text-gray-400">Showing {sortedStocks.length} stocks matching Doji criteria ({timeframe})</p>
+            <p className="text-sm text-gray-400">
+              {isLoading ? "Running technical calculations..." : `Showing ${sortedStocks.length} live matching assets (${timeframe})`}
+            </p>
           </div>
           
           <div className="flex gap-3 w-full sm:w-auto">
             <input 
               type="text"
-              placeholder="Search stock..."
+              placeholder="Search ticker or sector..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-[#161b22] border border-gray-700 rounded px-3 py-1.5 text-sm w-full sm:w-64 focus:outline-none focus:border-blue-500"
+              className="bg-[#161b22] border border-gray-700 rounded px-3 py-1.5 text-sm w-full sm:w-64 focus:outline-none focus:border-blue-500 text-white"
             />
           </div>
         </div>
 
-        {sortedStocks.length > 0 ? (
+        {/* State Conditional Renders */}
+        {apiError && (
+          <div className="text-center py-6 px-4 mb-4 bg-red-950/40 border border-red-900 text-red-400 rounded-md text-sm font-mono">
+            {apiError}
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="text-center py-20 text-blue-400 font-mono text-sm animate-pulse">
+            Fetching active OHLC data matrices from Yahoo Finance pipeline...
+          </div>
+        ) : sortedStocks.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="bg-[#161b22] text-gray-400 uppercase text-xs border-b border-gray-800">
                   <th className="py-3 px-4 w-16">Sr.</th>
-                  <th onClick={() => requestSort('name')} className="py-3 px-4 cursor-pointer hover:text-white select-none">
-                    Stock Name {sortConfig.key === 'name' ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}
-                  </th>
                   <th onClick={() => requestSort('symbol')} className="py-3 px-4 cursor-pointer hover:text-white select-none">
-                    Symbol {sortConfig.key === 'symbol' ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}
+                    Ticker {sortConfig.key === 'symbol' ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}
                   </th>
-                  <th onClick={() => requestSort('close')} className="py-3 px-4 cursor-pointer hover:text-white select-none text-right">
-                    Price {sortConfig.key === 'close' ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}
+                  <th onClick={() => requestSort('sector')} className="py-3 px-4 cursor-pointer hover:text-white select-none">
+                    Sector {sortConfig.key === 'sector' ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}
                   </th>
-                  <th className="py-3 px-4 text-right">Chg %</th>
+                  <th onClick={() => requestSort('price')} className="py-3 px-4 cursor-pointer hover:text-white select-none text-right">
+                    Price {sortConfig.key === 'price' ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}
+                  </th>
+                  <th onClick={() => requestSort('change')} className="py-3 px-4 cursor-pointer hover:text-white select-none text-right">
+                    Chg % {sortConfig.key === 'change' ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}
+                  </th>
                   <th onClick={() => requestSort('volume')} className="py-3 px-4 cursor-pointer hover:text-white select-none text-right">
                     Volume {sortConfig.key === 'volume' ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : ''}
                   </th>
@@ -135,17 +164,28 @@ export default function DojiScreener() {
               </thead>
               <tbody className="divide-y divide-gray-800">
                 {sortedStocks.map((stock, index) => {
-                  const change = getPctChange(stock);
                   return (
-                    <tr key={stock.id} className="hover:bg-[#1f242c] transition-colors group">
-                      <td className="py-3.5 px-4 text-gray-500">{index + 1}</td>
-                      <td className="py-3.5 px-4 font-medium text-gray-200 group-hover:text-white">{stock.name}</td>
-                      <td className="py-3.5 px-4 text-blue-400 font-bold hover:underline cursor-pointer">{stock.symbol}</td>
-                      <td className="py-3.5 px-4 text-right font-mono font-medium">₹{stock.close.toLocaleString()}</td>
-                      <td className={`py-3.5 px-4 text-right font-mono font-semibold ${Number(change) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {Number(change) >= 0 ? `+${change}%` : `${change}%`}
+                    <tr key={stock.symbol} className="hover:bg-[#1f242c] transition-colors group">
+                      <td className="py-3.5 px-4 text-gray-500 font-mono">{index + 1}</td>
+                      <td className="py-3.5 px-4 text-blue-400 font-bold hover:underline cursor-pointer">
+                        <a 
+                          href={`https://finance.yahoo.com/quote/${stock.symbol}.NS`} 
+                          target="_blank" 
+                          rel="noreferrer"
+                        >
+                          {stock.symbol}
+                        </a>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-gray-400">{stock.volume}</td>
+                      <td className="py-3.5 px-4 text-gray-300 font-medium">{stock.sector || "Other"}</td>
+                      <td className="py-3.5 px-4 text-right font-mono font-medium text-gray-100">
+                        ₹{stock.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className={`py-3.5 px-4 text-right font-mono font-semibold ${stock.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {stock.change >= 0 ? `+${stock.change}%` : `${stock.change}%`}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-mono text-gray-400">
+                        {(stock.volume / 100000).toFixed(1)} L
+                      </td>
                     </tr>
                   );
                 })}
@@ -153,8 +193,8 @@ export default function DojiScreener() {
             </table>
           </div>
         ) : (
-          <div className="text-center py-12 text-gray-500 border border-dashed border-gray-800 rounded">
-            No stocks found matching the Doji criteria for this period.
+          <div className="text-center py-16 text-gray-500 border border-dashed border-gray-800 rounded">
+            No live equities match the processing criteria for this period right now.
           </div>
         )}
       </div>
