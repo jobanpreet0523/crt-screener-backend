@@ -10,7 +10,7 @@ export default function DojiScreener() {
   const [apiError, setApiError] = useState(null);
 
   // Define API Production Server Base URI - Update this when your Render instance goes live!
-  const BASE_API_URL = "http://127.0.0.1:8000"; 
+  const BASE_API_URL = "https://crt-screener-backend-1.onrender.com";
 
   // Asynchronous Effect Engine calling your exact `/scan` route
   useEffect(() => {
